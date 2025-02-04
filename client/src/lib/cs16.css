@@ -1,0 +1,108 @@
+:root {
+  --cs-bg: #000000;
+  --cs-window: #000000;
+  --cs-border: #ffffff;
+  --cs-text: #ffffff;
+}
+
+.cs-window {
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  border-radius: 0;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  position: absolute;
+  min-width: 200px;
+  color: var(--cs-text);
+}
+
+.cs-titlebar {
+  background: var(--cs-window);
+  border-bottom: 1px solid var(--cs-border);
+  padding: 4px 8px;
+  font-weight: bold;
+  cursor: move;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cs-close-button {
+  background: none;
+  border: 1px solid var(--cs-border);
+  color: var(--cs-text);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cs-close-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cs-content {
+  padding: 8px;
+}
+
+.cs-button {
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  color: var(--cs-text);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.cs-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cs-input {
+  background: black;
+  border: 1px solid var(--cs-border);
+  color: var(--cs-text);
+  padding: 4px;
+  width: 100%;
+}
+
+.desktop-icons {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, 64px);
+}
+
+.desktop-icon {
+  width: 64px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--cs-text);
+  text-align: center;
+  padding: 4px;
+}
+
+.desktop-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.desktop-icon-image {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.desktop-icon-label {
+  font-size: 12px;
+  word-wrap: break-word;
+  max-width: 100%;
+}
