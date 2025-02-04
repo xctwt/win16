@@ -4,24 +4,29 @@ import { Window } from './Windows';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Message } from '@shared/schema';
 
-const ADJECTIVES = ['Legendary', 'Silent', 'Swift', 'Tactical', 'Sneaky'];
-const NOUNS = ['Eagle', 'Wolf', 'Snake', 'Hawk', 'Tiger'];
+function generateRandomNumber() {
+  return Math.floor(Math.random() * 9000 + 1000);
+}
 
-function generateNickname() {
-  const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
-  const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
-  return `${adj}${noun}`;
+function generateDefaultNickname() {
+  return `anonymous${generateRandomNumber()}`;
 }
 
 export function ChatWindow() {
   const [message, setMessage] = useState('');
-  const [nickname] = useState(generateNickname());
+  const [nickname, setNickname] = useState(generateDefaultNickname());
+  const [isRainbow, setIsRainbow] = useState(false);
+  const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ['/api/messages'],
-    refetchInterval: 3000,
+    refetchInterval: 300,
   });
+
+  useEffect(() => {
+    setLocalMessages(messages);
+  }, [messages]);
 
   const mutation = useMutation({
     mutationFn: async (content: string) => {
@@ -34,24 +39,77 @@ export function ChatWindow() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [localMessages]);
+
+  const handleNicknameCommand = (newNick: string) => {
+    const trimmedNick = newNick.trim();
+    if (trimmedNick) {
+      setNickname(`${trimmedNick}${generateRandomNumber()}`);
+      mutation.mutate('changed successfully');
+    }
+  };
+
+  const handleCommands = (command: string) => {
+    switch (command) {
+      case '/rgb':
+        setIsRainbow(!isRainbow);
+        mutation.mutate(`Rainbow mode ${isRainbow ? 'disabled' : 'enabled'}`);
+        break;
+      case '/clear':
+        setLocalMessages([]);
+        break;
+      case '/help':
+        const helpMessage = [
+          'Available commands:',
+          '/nick <nickname> - Change your nickname',
+          '/rgb - Toggle rainbow text mode',
+          '/clear - Clear chat history',
+          '/help - Show this help message',
+        ].join('\n');
+        mutation.mutate(helpMessage);
+        break;
+      default:
+        return false;
+    }
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      mutation.mutate(message.trim());
+    const trimmedMessage = message.trim();
+
+    if (trimmedMessage) {
+      if (trimmedMessage.startsWith('/nick ')) {
+        const newNick = trimmedMessage.slice(6);
+        handleNicknameCommand(newNick);
+      } else if (!handleCommands(trimmedMessage)) {
+        mutation.mutate(trimmedMessage);
+      }
       setMessage('');
     }
   };
 
+  const getRainbowStyle = (index: number) => {
+    if (!isRainbow) return {};
+    const hue = (index * 30) % 360;
+    return {
+      background: `linear-gradient(90deg, 
+        hsl(${hue}, 100%, 50%), 
+        hsl(${(hue + 60) % 360}, 100%, 50%))`,
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent',
+      padding: '2px 0',
+    };
+  };
+
   return (
-    <Window title="Chat" windowId="chat" defaultPosition={{ x: 20, y: 300 }}>
+    <Window title="RTC chat" windowId="chat" defaultPosition={{ x: 20, y: 300 }}>
       <div className="w-80 h-64 flex flex-col">
         <div className="flex-1 overflow-auto mb-4">
-          {messages.map((msg) => (
+          {localMessages.map((msg, index) => (
             <div key={msg.id} className="mb-2">
               <span className="font-bold">{msg.nickname}: </span>
-              <span>{msg.content}</span>
+              <span style={getRainbowStyle(index)}>{msg.content}</span>
             </div>
           ))}
           <div ref={bottomRef} />
@@ -65,7 +123,11 @@ export function ChatWindow() {
             placeholder="Type a message..."
             className="cs-input flex-1"
           />
-          <button type="submit" className="cs-button" disabled={mutation.isPending}>
+          <button
+            type="submit"
+            className="cs-button"
+            disabled={mutation.isPending}
+          >
             Send
           </button>
         </form>

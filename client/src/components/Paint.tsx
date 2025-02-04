@@ -143,7 +143,7 @@ export function Paint() {
 
   return (
     <>
-      <Window title="Paint" windowId="paint" defaultPosition={{ x: 400, y: 100 }}>
+      <Window title="paint" windowId="paint" defaultPosition={{ x: 400, y: 100 }}>
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             <button

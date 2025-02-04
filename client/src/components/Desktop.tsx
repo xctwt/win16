@@ -5,11 +5,11 @@ export function Desktop() {
   const { openWindow } = useWindowState();
 
   const icons = [
-    { id: 'music', label: 'Music Player', Icon: Music },
-    { id: 'info', label: 'About Me', Icon: Info },
-    { id: 'chat', label: 'Chat', Icon: MessageSquare },
-    { id: 'paint', label: 'Paint', Icon: Paintbrush },
-    { id: 'drawings', label: 'Drawings', Icon: FolderOpen },
+    { id: 'music', label: 'player', Icon: Music },
+    { id: 'info', label: 'about', Icon: Info },
+    { id: 'chat', label: 'chat', Icon: MessageSquare },
+    { id: 'paint', label: 'paint', Icon: Paintbrush },
+    { id: 'drawings', label: 'drawings', Icon: FolderOpen },
   ];
 
   return (

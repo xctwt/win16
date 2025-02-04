@@ -85,7 +85,7 @@ export function MusicPlayer() {
   };
 
   return (
-    <Window title="Music Player" windowId="music" defaultPosition={{ x: 20, y: 20 }}>
+    <Window title="player" windowId="music" defaultPosition={{ x: 20, y: 20 }}>
       <div className="w-64 space-y-4">
         <audio
           ref={audioRef}

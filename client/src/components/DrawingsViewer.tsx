@@ -8,7 +8,7 @@ export function DrawingsViewer() {
   });
 
   return (
-    <Window title="Drawings" windowId="drawings" defaultPosition={{ x: 500, y: 100 }}>
+    <Window title="drawings" windowId="drawings" defaultPosition={{ x: 500, y: 100 }}>
       <div className="w-80 h-80 overflow-auto grid grid-cols-2 gap-2 p-2">
         {drawings.map((drawing) => (
           <div key={drawing.id} className="border border-cs-border p-1">
