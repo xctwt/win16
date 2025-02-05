@@ -5,8 +5,24 @@ import { useToast } from '@/hooks/use-toast';
 
 const SONGS = [
   { 
-    title: "Tsubi Club - Re-Laced Up", 
-    url: "/assets/music/1-tsubi-club-re-laced-up-V8C8YY.mp3"
+    title: "Junshi - ᴏᴜʀ ʀᴏᴍᴀɴᴄᴇ: ᏕᏂᎥᏁᏋ ᏕᏂᏒᎥᏁᏋ",
+    url: "/assets/music/1-Junshi-----------------YSQ9BA.mp3"
+  },
+  { 
+    title: "Junshi, Gomi - ᏋᏒᎧᎶᏋ ᏝᎧᏉᏋ ᎮᎧᏖᎥᎧᏁ",
+    url: "/assets/music/1-Junshi-----------------2T2Q26.mp3"
+  },
+  { 
+    title: "Junshi, 9lives - ᎴᏒᏬᎥᎴ ᎦᎧᏒᏋᏕᏖ ᏒᏋᏗᏝᎷ",
+    url: "/assets/music/1-Junshi-----------------OOBP7L.mp3"
+  },
+  { 
+    title: "Junshi, whyhaze - endearment vessel daki ~ cecilia 1 ~",
+    url: "/assets/music/1-Junshi-endearment-vess-P20TYZ.mp3"
+  },
+  { 
+    title: "Junshi, may - melancholy Garden: silence",
+    url: "/assets/music/1-Junshi-melancholy-Gard-CWG15U.mp3"
   }
 ];
 
