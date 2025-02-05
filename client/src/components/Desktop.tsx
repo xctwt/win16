@@ -6,7 +6,7 @@ export function Desktop() {
 
   const icons = [
     { id: 'music', label: 'player', Icon: Music },
-    { id: 'readme', label: 'about', Icon: Info },
+    { id: 'info', label: 'readme', Icon: Info },
     { id: 'chat', label: 'chat', Icon: MessageSquare },
     { id: 'paint', label: 'paint', Icon: Paintbrush },
     { id: 'drawings', label: 'drawings', Icon: FolderOpen },
