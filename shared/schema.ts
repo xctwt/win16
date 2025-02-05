@@ -30,5 +30,18 @@ export const insertDrawingSchema = createInsertSchema(drawings).pick({
 
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
-export type InsertDrawing = z.infer<typeof insertDrawingSchema>;
-export type Drawing = typeof drawings.$inferSelect;
+
+
+export interface Drawing {
+  id: number;
+  name: string;
+  author: string;
+  imageData: string; // Now stores the file path instead of base64
+  timestamp: Date;
+}
+
+export interface InsertDrawing {
+  name: string;
+  author: string;
+  image: string; // Still accepts base64 from client
+}

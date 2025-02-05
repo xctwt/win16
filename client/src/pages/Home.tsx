@@ -4,6 +4,7 @@ import { InfoWindow } from '@/components/InfoWindow';
 import { ChatWindow } from '@/components/ChatWindow';
 import { Paint } from '@/components/Paint';
 import { DrawingsViewer } from '@/components/DrawingsViewer';
+import { Clicker } from '@/components/Clicker'; // Add this import
 import { Desktop } from '@/components/Desktop';
 import { WindowProvider, useWindowState } from '@/lib/windowContext';
 import { initOneko } from '@/lib/oneko';
@@ -19,6 +20,7 @@ function Windows() {
       {windowStates.chat.isOpen && <ChatWindow />}
       {windowStates.paint.isOpen && <Paint />}
       {windowStates.drawings.isOpen && <DrawingsViewer />}
+      {windowStates.clicker.isOpen && <Clicker />} {/* Add this line */}
     </>
   );
 }

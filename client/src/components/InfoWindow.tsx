@@ -2,17 +2,17 @@ import { Window } from './Windows';
 
 export function InfoWindow() {
   return (
-    <Window title="whatever" windowId="info" defaultPosition={{ x: 300, y: 20 }}>
+    <Window title="readme" windowId="info" defaultPosition={{ x: 300, y: 20 }}>
       <div className="w-64 space-y-4">
         <div className="text-sm">
           <p className="mb-2">
-            hi
+            inspired by <a href="https://hardanimeshirts.com">hardanimeshirts</a>
           </p>
           <p className="mb-2">
-            what r u doing here?
+            /help in chat to see commands
           </p>
           <p>
-            
+            &lt;3
           </p>
         </div>
 

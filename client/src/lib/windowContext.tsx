@@ -21,9 +21,10 @@ export function WindowProvider({ children }: { children: ReactNode }) {
   const [windowStates, setWindowStates] = useState<WindowState>({
     music: { isOpen: true, zIndex: 1 },
     info: { isOpen: false, zIndex: 0 },
-    chat: { isOpen: true, zIndex: 2 },
+    chat: { isOpen: false, zIndex: 2 },
     paint: { isOpen: false, zIndex: 0 },
     drawings: { isOpen: false, zIndex: 0 },
+    clicker: { isOpen: false, zIndex: 0 }, // Add this line
   });
 
   const openWindow = (id: string) => {

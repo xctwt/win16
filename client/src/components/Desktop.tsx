@@ -1,4 +1,4 @@
-import { Music, MessageSquare, Info, Paintbrush, FolderOpen } from 'lucide-react';
+import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Mouse } from 'lucide-react';
 import { useWindowState } from '@/lib/windowContext';
 
 export function Desktop() {
@@ -6,10 +6,11 @@ export function Desktop() {
 
   const icons = [
     { id: 'music', label: 'player', Icon: Music },
-    { id: 'info', label: 'about', Icon: Info },
+    { id: 'readme', label: 'about', Icon: Info },
     { id: 'chat', label: 'chat', Icon: MessageSquare },
     { id: 'paint', label: 'paint', Icon: Paintbrush },
     { id: 'drawings', label: 'drawings', Icon: FolderOpen },
+    { id: 'clicker', label: 'clicker', Icon: Mouse }, // Add this line
   ];
 
   return (
