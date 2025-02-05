@@ -145,15 +145,15 @@ export function Clicker() {
               className={`cs-button flex-1 ${activeTab === 'scores' ? 'border-white' : ''}`}
               onClick={() => setActiveTab('scores')}
             >
-              <Trophy className="w-4 h-4 mr-2" />
-              High Scores
+              
+              Leaderboard
             </button>
           </div>
 
           {activeTab === 'game' ? (
             <>
               <div className="text-center">
-                <h2 className="text-2xl font-bold">{count.toLocaleString()} clicks</h2>
+                <h2 className="text-2xl font-bold">{count.toLocaleString()} </h2>
                 <p className="text-sm text-gray-400">
                   Multiplier: x{multiplier} | Auto-clickers: {autoClickerCount}
                 </p>
@@ -207,7 +207,7 @@ export function Clicker() {
                     <span className="truncate">{score.name}</span>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="font-bold">{score.score.toLocaleString()} clicks</div>
+                    <div className="font-bold">{score.score.toLocaleString()} </div>
                     <div className="text-xs text-gray-400">
                       {new Date(score.date).toLocaleDateString()}
                     </div>
@@ -235,7 +235,7 @@ export function Clicker() {
               />
             </div>
             <div className="text-center">
-              <p className="text-lg">Your Score: {count.toLocaleString()} clicks</p>
+              <p className="text-lg">Your Score: {count.toLocaleString()} </p>
             </div>
           </div>
           <DialogFooter>

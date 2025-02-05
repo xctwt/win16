@@ -175,10 +175,11 @@ export function MusicPlayer() {
               </div>
             </div>
 
+            {/* Progress bar */}
             <div className="space-y-2">
-              <div className="h-1 bg-gray-700 rounded">
+              <div className="progress-bar">
                 <div 
-                  className="h-full bg-white rounded"
+                  className="progress-bar-fill"
                   style={{ width: `${(currentTime / duration) * 100 || 0}%` }}
                 />
               </div>
@@ -187,6 +188,7 @@ export function MusicPlayer() {
                 <span>{formatTime(duration)}</span>
               </div>
             </div>
+
 
             <div className="flex justify-center space-x-4">
               <button className="cs-button" onClick={prevSong}>
@@ -199,13 +201,14 @@ export function MusicPlayer() {
                 <SkipForward className="w-4 h-4" />
               </button>
               <button 
-                className={`cs-button ${showPlaylist ? 'border-white' : ''}`} 
+                className={`cs-button ${showPlaylist ? 'border-cs-text' : ''}`} 
                 onClick={() => setShowPlaylist(!showPlaylist)}
               >
                 {showPlaylist ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}
               </button>
             </div>
 
+            {/* Volume control */}
             <div className="flex items-center space-x-2">
               <Volume2 className="w-4 h-4" />
               <input
@@ -221,7 +224,6 @@ export function MusicPlayer() {
                   }
                   setVolume(newVolume);
                 }}
-                className="w-full appearance-none bg-gray-700 h-1 rounded-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-black [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:bg-black [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:rounded-none [&::-moz-range-thumb]:cursor-pointer"
               />
             </div>
 
@@ -232,9 +234,8 @@ export function MusicPlayer() {
                     <button
                       key={index}
                       onClick={() => playTrack(index)}
-                      className={`w-full text-left p-2 hover:bg-gray-700 ${
-                        currentSong === index ? 'bg-gray-700' : ''
-                      }`}
+                      className={`w-full text-left p-2 hover:bg-cs-hover
+                        ${currentSong === index ? 'border border-cs-text' : 'border-transparent border'}`}
                     >
                       <div className="truncate text-sm">
                         {track.artist} - {track.title}

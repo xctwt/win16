@@ -1,4 +1,5 @@
-import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Mouse } from 'lucide-react';
+// components/Desktop.tsx
+import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Settings, Cookie } from 'lucide-react';
 import { useWindowState } from '@/lib/windowContext';
 
 export function Desktop() {
@@ -6,11 +7,12 @@ export function Desktop() {
 
   const icons = [
     { id: 'music', label: 'player', Icon: Music },
-    { id: 'info', label: 'readme', Icon: Info },
+    { id: 'info', label: 'about', Icon: Info },
     { id: 'chat', label: 'chat', Icon: MessageSquare },
     { id: 'paint', label: 'paint', Icon: Paintbrush },
     { id: 'drawings', label: 'drawings', Icon: FolderOpen },
-    { id: 'clicker', label: 'clicker', Icon: Mouse }, // Add this line
+    { id: 'settings', label: 'settings', Icon: Settings },
+    { id: 'clicker', label: 'clicker', Icon: Cookie }, // Added back the clicker icon
   ];
 
   return (

@@ -1,15 +1,59 @@
+/* Base Theme Variables */
 :root {
-  --cs-bg: #000000;
-  --cs-window: #000000;
-  --cs-border: #ffffff;
-  --cs-text: #ffffff;
+  /* Dark theme */
+  --cs-bg: #000000;          /* Desktop background */
+  --cs-window: #000000;      /* Window background */
+  --cs-border: #ffffff;      /* Borders */
+  --cs-text: #ffffff;        /* Text color */
+  --cs-hover: rgba(255, 255, 255, 0.1);
+  --shadow: rgba(255, 255, 255, 0.1);
+  --desktop-icon-bg: rgba(0, 0, 0, 0.3);
 }
 
+:root.light {
+  /* Light theme */
+  --cs-bg: #ffffff;          /* Desktop background */
+  --cs-window: #ffffff;      /* Window background */
+  --cs-border: #000000;      /* Borders */
+  --cs-text: #000000;        /* Text color */
+  --cs-hover: rgba(0, 0, 0, 0.1);
+  --shadow: rgba(0, 0, 0, 0.1);
+  --desktop-icon-bg: rgba(255, 255, 255, 0.3);
+}
+
+/* Button Styles */
+.cs-button {
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  color: var(--cs-text);
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cs-button:hover {
+  background: var(--cs-hover);
+}
+
+.cs-button-active {
+  background: var(--cs-hover);
+  border-color: var(--cs-text);
+}
+
+/* Make sure the app background uses the correct variable */
+.app {
+  background-color: var(--cs-bg);
+  min-height: 100vh;
+  transition: background-color 0.3s ease;
+}
+
+
+/* Window Styles */
 .cs-window {
   background: var(--cs-window);
   border: 1px solid var(--cs-border);
   border-radius: 0;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px var(--shadow);
   position: absolute;
   min-width: 200px;
   color: var(--cs-text);
@@ -27,26 +71,11 @@
   align-items: center;
 }
 
-.cs-close-button {
-  background: none;
-  border: 1px solid var(--cs-border);
-  color: var(--cs-text);
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.cs-close-button:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
 .cs-content {
   padding: 8px;
 }
 
+/* Button Styles */
 .cs-button {
   background: var(--cs-window);
   border: 1px solid var(--cs-border);
@@ -56,17 +85,39 @@
 }
 
 .cs-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--cs-hover);
 }
 
+.cs-close-button {
+  background: none;
+  color: var(--cs-text);
+  width: 20px;
+  height: 20px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 5px;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-close-button:hover {
+  background: var(--cs-hover);
+}
+
+/* Input Styles */
 .cs-input {
-  background: black;
+  background: var(--cs-window);
   border: 1px solid var(--cs-border);
   color: var(--cs-text);
   padding: 4px;
   width: 100%;
 }
 
+/* Desktop Icons */
 .desktop-icons {
   position: fixed;
   top: 20px;
@@ -90,7 +141,7 @@
 }
 
 .desktop-icon:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--cs-hover);
 }
 
 .desktop-icon-image {
@@ -101,8 +152,143 @@
   justify-content: center;
 }
 
+/* Desktop Icons */
 .desktop-icon-label {
   font-size: 12px;
   word-wrap: break-word;
   max-width: 100%;
+  color: var(--cs-text);
+  text-shadow: 0 0 3px var(--cs-bg); /* Keep the text shadow for readability */
+  /* Remove these properties */
+  /* background-color: var(--desktop-icon-bg); */
+  /* padding: 2px 6px; */
+  /* border-radius: 4px; */
 }
+
+/* Remove this if you have it */
+.light .desktop-icon-label {
+  /* background-color: rgba(255, 255, 255, 0.3); */
+}
+
+
+/* Dock Styles */
+.cs-dock {
+  background-color: var(--cs-window);
+  border: 1px solid var(--cs-border);
+}
+
+.cs-dock-icon {
+  border: 1px solid var(--cs-border);
+  background-color: var(--cs-window);
+  color: var(--cs-text);
+}
+
+/* In cs16.css or your music player styles */
+.playlist-item {
+  background: var(--cs-window);
+  color: var(--cs-text);
+  border: 1px solid var(--cs-border);
+  padding: 8px;
+  cursor: pointer;
+}
+
+.playlist-item:hover {
+  background: var(--cs-hover);
+}
+
+.playlist-item.active {
+  background: var(--cs-hover);
+  border-color: var(--cs-text);
+}
+/* Add these new styles for progress and volume controls */
+/* Progress bar */
+.progress-bar {
+  height: 4px;
+  background: var(--cs-hover);
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--cs-border);
+  transition: width 0.1s linear;
+}
+
+/* Volume and progress slider styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+  height: 4px;
+}
+
+/* Track styles */
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  background: var(--cs-border);
+  border: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  background: var(--shadow);
+  border: none;
+  cursor: pointer;
+}
+
+/* Square thumb styles */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 10px;
+  width: 10px;
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  margin-top: -3px; /* Centers the thumb on the track */
+  cursor: pointer;
+  border-radius: 0; /* Makes it square */
+}
+
+input[type="range"]::-moz-range-thumb {
+  height: 10px;
+  width: 10px;
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  cursor: pointer;
+  border-radius: 0; /* Makes it square */
+}
+
+/* Focus styles */
+input[type="range"]:focus {
+  outline: none;
+}
+
+input[type="range"]:focus::-webkit-slider-runnable-track {
+  background: var(--cs-border);
+}
+
+/* Hover styles */
+input[type="range"]:hover::-webkit-slider-thumb {
+  border-color: var(--cs-text);
+}
+
+input[type="range"]:hover::-moz-range-thumb {
+  border-color: var(--cs-text);
+}
+
+/* Add or update these styles */
+.cs-button.border-cs-text {
+  border-color: var(--cs-text);
+}
+
+button.border-cs-text {
+  border-color: var(--cs-text);
+}
+
+button.border-cs-border {
+  border-color: var(--cs-border);
+}
+

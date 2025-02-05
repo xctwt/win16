@@ -1,13 +1,14 @@
+// components/Windows.tsx
 import React from 'react';
 import Draggable from 'react-draggable';
 import { X } from 'lucide-react';
-import { useWindowState } from '@/lib/windowContext';
+import { useWindowState, WindowId } from '@/lib/windowContext';
 
 interface WindowProps {
   title: string;
   children: React.ReactNode;
   defaultPosition?: { x: number; y: number };
-  windowId: string;
+  windowId: WindowId;
 }
 
 export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, windowId }: WindowProps) {
@@ -15,6 +16,12 @@ export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, wi
   const windowState = windowStates[windowId];
 
   if (!windowState) return null;
+
+  const handleCloseClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    closeWindow(windowId);
+  };
 
   return (
     <Draggable 
@@ -30,7 +37,12 @@ export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, wi
       >
         <div className="cs-titlebar">
           <span>{title}</span>
-          <button className="cs-close-button" onClick={() => closeWindow(windowId)}>
+          <button 
+            className="cs-close-button" 
+            onClick={handleCloseClick}
+            onTouchEnd={handleCloseClick}
+            style={{ touchAction: 'manipulation' }}
+          >
             <X size={14} />
           </button>
         </div>

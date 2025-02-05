@@ -1,33 +1,42 @@
+// lib/windowContext.tsx
 import { createContext, useContext, useState, ReactNode } from 'react';
 
+// Define window IDs type
+export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings';
+
+interface WindowStateItem {
+  isOpen: boolean;
+  zIndex: number;
+}
+
 interface WindowState {
-  [key: string]: {
-    isOpen: boolean;
-    zIndex: number;
-  };
+  [K in WindowId]: WindowStateItem;
 }
 
 interface WindowContextType {
   windowStates: WindowState;
-  openWindow: (id: string) => void;
-  closeWindow: (id: string) => void;
-  focusWindow: (id: string) => void;
-  toggleWindow: (id: string) => void;
+  openWindow: (id: WindowId) => void;
+  closeWindow: (id: WindowId) => void;
+  focusWindow: (id: WindowId) => void;
+  toggleWindow: (id: WindowId) => void;
 }
 
 const WindowContext = createContext<WindowContextType | undefined>(undefined);
 
-export function WindowProvider({ children }: { children: ReactNode }) {
-  const [windowStates, setWindowStates] = useState<WindowState>({
-    music: { isOpen: true, zIndex: 1 },
-    info: { isOpen: false, zIndex: 0 },
-    chat: { isOpen: false, zIndex: 2 },
-    paint: { isOpen: false, zIndex: 0 },
-    drawings: { isOpen: false, zIndex: 0 },
-    clicker: { isOpen: false, zIndex: 0 }, // Add this line
-  });
+const initialWindowStates: WindowState = {
+  music: { isOpen: true, zIndex: 1 },
+  info: { isOpen: false, zIndex: 0 },
+  chat: { isOpen: false, zIndex: 2 },
+  paint: { isOpen: false, zIndex: 0 },
+  drawings: { isOpen: false, zIndex: 0 },
+  clicker: { isOpen: false, zIndex: 0 },
+  settings: { isOpen: false, zIndex: 0 },
+};
 
-  const openWindow = (id: string) => {
+export function WindowProvider({ children }: { children: ReactNode }) {
+  const [windowStates, setWindowStates] = useState<WindowState>(initialWindowStates);
+
+  const openWindow = (id: WindowId) => {
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       return {
@@ -37,14 +46,14 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const closeWindow = (id: string) => {
+  const closeWindow = (id: WindowId) => {
     setWindowStates(prev => ({
       ...prev,
       [id]: { ...prev[id], isOpen: false, zIndex: 0 }
     }));
   };
 
-  const focusWindow = (id: string) => {
+  const focusWindow = (id: WindowId) => {
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       if (prev[id].zIndex === maxZ) return prev;
@@ -55,7 +64,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const toggleWindow = (id: string) => {
+  const toggleWindow = (id: WindowId) => {
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       return {

@@ -41,11 +41,23 @@ export function ChatWindow() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [localMessages]);
 
+  const addLocalMessage = (content: string) => {
+    const localMessage: Message = {
+      id: Date.now(),
+      nickname: 'System',
+      content,
+      timestamp: new Date(),
+    };
+    setLocalMessages(prev => [...prev, localMessage]);
+  };
+
   const handleNicknameCommand = (newNick: string) => {
     const trimmedNick = newNick.trim();
     if (trimmedNick) {
-      setNickname(`${trimmedNick}${generateRandomNumber()}`);
-      mutation.mutate('changed successfully');
+      const oldNick = nickname;
+      const newNickname = `${trimmedNick}${generateRandomNumber()}`;
+      setNickname(newNickname);
+      addLocalMessage(`Nickname changed from ${oldNick} to ${newNickname}`);
     }
   };
 
@@ -53,7 +65,7 @@ export function ChatWindow() {
     switch (command) {
       case '/rgb':
         setIsRainbow(!isRainbow);
-        mutation.mutate(`Rainbow mode ${isRainbow ? 'disabled' : 'enabled'}`);
+        addLocalMessage(`Rainbow mode ${isRainbow ? 'disabled' : 'enabled'}`);
         break;
       case '/clear':
         setLocalMessages([]);
@@ -66,7 +78,7 @@ export function ChatWindow() {
           '/clear - Clear chat history',
           '/help - Show this help message',
         ].join('\n');
-        mutation.mutate(helpMessage);
+        addLocalMessage(helpMessage);
         break;
       default:
         return false;
@@ -102,14 +114,30 @@ export function ChatWindow() {
     };
   };
 
+  // Combine server messages with local system messages
+  const displayMessages = localMessages.map(msg => ({
+    ...msg,
+    isSystem: msg.nickname === 'System'
+  }));
+
   return (
     <Window title="chat" windowId="chat" defaultPosition={{ x: 20, y: 300 }}>
       <div className="w-80 h-64 flex flex-col">
         <div className="flex-1 overflow-auto mb-4">
-          {localMessages.map((msg, index) => (
+          {displayMessages.map((msg, index) => (
             <div key={msg.id} className="mb-2">
-              <span className="font-bold">{msg.nickname}: </span>
-              <span style={getRainbowStyle(index)}>{msg.content}</span>
+              {msg.isSystem ? (
+                // System messages (commands) in italic and different color
+                <div className="text-cs-border italic">
+                  {msg.content}
+                </div>
+              ) : (
+                // Regular chat messages
+                <div>
+                  <span className="font-bold">{msg.nickname}: </span>
+                  <span style={getRainbowStyle(index)}>{msg.content}</span>
+                </div>
+              )}
             </div>
           ))}
           <div ref={bottomRef} />

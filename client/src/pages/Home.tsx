@@ -4,11 +4,12 @@ import { InfoWindow } from '@/components/InfoWindow';
 import { ChatWindow } from '@/components/ChatWindow';
 import { Paint } from '@/components/Paint';
 import { DrawingsViewer } from '@/components/DrawingsViewer';
-import { Clicker } from '@/components/Clicker'; // Add this import
+import { Clicker } from '@/components/Clicker';
 import { Desktop } from '@/components/Desktop';
-import { WindowProvider, useWindowState } from '@/lib/windowContext';
+import { useWindowState } from '@/lib/windowContext';
 import { initOneko } from '@/lib/oneko';
 import { Screensaver } from '@/components/Screensaver';
+import { Settings } from '@/components/Settings';
 
 function Windows() {
   const { windowStates } = useWindowState();
@@ -20,12 +21,13 @@ function Windows() {
       {windowStates.chat.isOpen && <ChatWindow />}
       {windowStates.paint.isOpen && <Paint />}
       {windowStates.drawings.isOpen && <DrawingsViewer />}
-      {windowStates.clicker.isOpen && <Clicker />} {/* Add this line */}
+      {windowStates.clicker.isOpen && <Clicker />}
+      {windowStates.settings.isOpen && <Settings />}
     </>
   );
 }
 
-const IDLE_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
+const IDLE_TIME = 10 * 1000; // 2 minutes in milliseconds
 
 export default function Home() {
   const [showScreensaver, setShowScreensaver] = useState(false);
@@ -35,7 +37,6 @@ export default function Home() {
     initOneko();
   }, []);
 
-  // Idle detection
   useEffect(() => {
     const handleActivity = () => {
       setLastActivity(Date.now());
@@ -48,10 +49,8 @@ export default function Home() {
       }
     };
 
-    // Check for idle state every second
     const idleCheck = setInterval(checkIdle, 1000);
 
-    // Add activity listeners
     window.addEventListener('mousemove', handleActivity);
     window.addEventListener('mousedown', handleActivity);
     window.addEventListener('keydown', handleActivity);
@@ -69,19 +68,17 @@ export default function Home() {
   }, [lastActivity]);
 
   return (
-    <WindowProvider>
-      <div className="min-h-screen bg-black p-4">
-        <Desktop />
-        <Windows />
-        {showScreensaver && (
-          <Screensaver 
-            onActivity={() => {
-              setLastActivity(Date.now());
-              setShowScreensaver(false);
-            }}
-          />
-        )}
-      </div>
-    </WindowProvider>
+    <div className="app min-h-screen p-4">
+      <Desktop />
+      <Windows />
+      {showScreensaver && (
+        <Screensaver 
+          onActivity={() => {
+            setLastActivity(Date.now());
+            setShowScreensaver(false);
+          }}
+        />
+      )}
+    </div>
   );
 }

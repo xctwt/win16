@@ -24,6 +24,7 @@ export function Paint() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [name, setName] = useState('');
   const [author, setAuthor] = useState('');
+  const [brushSize, setBrushSize] = useState(2);
   const { toast } = useToast();
 
   const initCanvas = () => {
@@ -81,11 +82,11 @@ export function Paint() {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    e.preventDefault(); // Prevent scrolling on touch devices
+    e.preventDefault();
     const { x, y } = getCoordinates(e);
 
     ctx.strokeStyle = tool === 'eraser' ? '#000000' : color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = brushSize;
     ctx.lineCap = 'round';
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -147,13 +148,13 @@ export function Paint() {
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             <button
-              className={`cs-button ${tool === 'brush' ? 'border-white' : ''}`}
+              className={`cs-button ${tool === 'brush' ? 'border-cs-text' : ''}`}
               onClick={() => setTool('brush')}
             >
               <Paintbrush className="w-4 h-4" />
             </button>
             <button
-              className={`cs-button ${tool === 'eraser' ? 'border-white' : ''}`}
+              className={`cs-button ${tool === 'eraser' ? 'border-cs-text' : ''}`}
               onClick={() => setTool('eraser')}
             >
               <Eraser className="w-4 h-4" />
@@ -161,7 +162,7 @@ export function Paint() {
             {COLORS.map((c) => (
               <button
                 key={c}
-                className={`w-6 h-6 border ${color === c ? 'border-white' : 'border-gray-600'}`}
+                className={`w-6 h-6 border ${color === c ? 'border-cs-text' : 'border-cs-border'}`}
                 style={{ background: c }}
                 onClick={() => {
                   setTool('brush');
@@ -169,6 +170,17 @@ export function Paint() {
                 }}
               />
             ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="range"
+              min="1"
+              max="20"
+              value={brushSize}
+              onChange={(e) => setBrushSize(Number(e.target.value))}
+              className="w-full"
+            />
           </div>
 
           <canvas
