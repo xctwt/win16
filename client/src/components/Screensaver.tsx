@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useWindowState } from '@/lib/windowContext';
+import { useEffect, useState } from "react";
+import { useWindowState } from "@/lib/windowContext";
 
 export function Screensaver({ onActivity }: { onActivity: () => void }) {
   const [time, setTime] = useState(new Date());
@@ -19,24 +19,22 @@ export function Screensaver({ onActivity }: { onActivity: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black z-50 cursor-none"
+      className="fixed inset-0 z-50 cursor-none"
+      style={{ backgroundColor: "var(--cs-bg)" }}
       onClick={handleActivity}
       onMouseMove={handleActivity}
       onTouchStart={handleActivity}
     >
       <div
-        className="absolute text-white font-mono"
+        className="absolute font-mono"
         style={{
-          right: '20px',
-          bottom: '20px',
+          right: "20px",
+          bottom: "20px",
+          color: "var(--cs-text)",
         }}
       >
-        <div className="text-4xl">
-          {time.toLocaleTimeString()}
-        </div>
-        <div className="text-sm opacity-70">
-          Move mouse or touch screen to exit
-        </div>
+        <div className="text-4xl">{time.toLocaleTimeString()}</div>
+        <div className="text-sm opacity-70">Move mouse or touch screen to exit</div>
       </div>
     </div>
   );

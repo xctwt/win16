@@ -1,4 +1,3 @@
-// lib/windowContext.tsx
 import { createContext, useContext, useState, ReactNode } from 'react';
 
 // Define window IDs type
@@ -19,6 +18,7 @@ interface WindowContextType {
   closeWindow: (id: WindowId) => void;
   focusWindow: (id: WindowId) => void;
   toggleWindow: (id: WindowId) => void;
+  handleActivity: () => void; // Added for activity tracking
 }
 
 const WindowContext = createContext<WindowContextType | undefined>(undefined);
@@ -77,12 +77,18 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const handleActivity = () => {
+    window.dispatchEvent(new Event('appActivity'));
+  };
+  
+
   const value = {
     windowStates,
     openWindow,
     closeWindow,
     focusWindow,
-    toggleWindow
+    toggleWindow,
+    handleActivity // Expose the activity handler
   };
 
   return (

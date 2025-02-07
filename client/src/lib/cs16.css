@@ -6,6 +6,7 @@
   --cs-border: #ffffff;      /* Borders */
   --cs-text: #ffffff;        /* Text color */
   --cs-hover: rgba(255, 255, 255, 0.1);
+  --cs-text-rgb: (255, 255, 255);  /* Add this line */
   --shadow: rgba(255, 255, 255, 0.1);
   --desktop-icon-bg: rgba(0, 0, 0, 0.3);
 }
@@ -17,6 +18,7 @@
   --cs-border: #000000;      /* Borders */
   --cs-text: #000000;        /* Text color */
   --cs-hover: rgba(0, 0, 0, 0.1);
+  --cs-text-rgb: (0, 0, 0);  /* Add this line */
   --shadow: rgba(0, 0, 0, 0.1);
   --desktop-icon-bg: rgba(255, 255, 255, 0.3);
 }

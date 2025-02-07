@@ -20,14 +20,14 @@ function Router() {
 function App() {
   return (
     <ThemeProvider>
-      <WindowProvider>
-        <QueryClientProvider client={queryClient}>
-          <div className="app">
-            <Router />
-            <Toaster />
-          </div>
-        </QueryClientProvider>
-      </WindowProvider>
+        <WindowProvider>
+          <QueryClientProvider client={queryClient}>
+            <div className="app">
+              <Router />
+              <Toaster />
+            </div>
+          </QueryClientProvider>
+        </WindowProvider>
     </ThemeProvider>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { InfoWindow } from '@/components/InfoWindow';
 import { ChatWindow } from '@/components/ChatWindow';
@@ -27,7 +27,7 @@ function Windows() {
   );
 }
 
-const IDLE_TIME = 10 * 1000; // 2 minutes in milliseconds
+const IDLE_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
 
 export default function Home() {
   const [showScreensaver, setShowScreensaver] = useState(false);
@@ -37,35 +37,51 @@ export default function Home() {
     initOneko();
   }, []);
 
-  useEffect(() => {
-    const handleActivity = () => {
-      setLastActivity(Date.now());
-      setShowScreensaver(false);
-    };
+  const updateLastActivity = useCallback(() => {
+    setLastActivity(Date.now());
+    setShowScreensaver(false);
+  }, []);
 
+  // Activity tracking
+  useEffect(() => {
     const checkIdle = () => {
-      if (Date.now() - lastActivity >= IDLE_TIME) {
+      // Only check for idle if screensaver isn't already showing
+      if (!showScreensaver && Date.now() - lastActivity >= IDLE_TIME) {
         setShowScreensaver(true);
       }
     };
 
+    // Set up idle checker
     const idleCheck = setInterval(checkIdle, 1000);
 
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('mousedown', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-    window.addEventListener('scroll', handleActivity);
+    // Set up activity listeners
+    const activityEvents = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'touchstart',
+      'scroll',
+      'click',
+      'input'
+    ];
 
+    // Add listeners for all activity events
+    activityEvents.forEach(event => {
+      window.addEventListener(event, updateLastActivity);
+    });
+
+    // Create custom event for app-specific activity
+    window.addEventListener('appActivity', updateLastActivity);
+
+    // Cleanup
     return () => {
       clearInterval(idleCheck);
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('mousedown', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
-      window.removeEventListener('scroll', handleActivity);
+      activityEvents.forEach(event => {
+        window.removeEventListener(event, updateLastActivity);
+      });
+      window.removeEventListener('appActivity', updateLastActivity);
     };
-  }, [lastActivity]);
+  }, [lastActivity, showScreensaver, updateLastActivity]);
 
   return (
     <div className="app min-h-screen p-4">

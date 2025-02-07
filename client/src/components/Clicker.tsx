@@ -134,21 +134,28 @@ export function Clicker() {
         defaultPosition={{ x: 300, y: 200 }}
       >
         <div className="space-y-4 p-4" style={{ width: '300px' }}>
-          <div className="flex gap-2 mb-4">
-            <button
-              className={`cs-button flex-1 ${activeTab === 'game' ? 'border-white' : ''}`}
-              onClick={() => setActiveTab('game')}
-            >
-              Game
-            </button>
-            <button
-              className={`cs-button flex-1 ${activeTab === 'scores' ? 'border-white' : ''}`}
-              onClick={() => setActiveTab('scores')}
-            >
-              
-              Leaderboard
-            </button>
-          </div>
+        <div className="flex gap-2 mb-4">
+          <button
+            className={`cs-button flex-1 ${
+              activeTab === 'game' 
+                ? 'border-[var(--cs-text)]' 
+                : 'border-[var(--cs-border)]'
+            }`}
+            onClick={() => setActiveTab('game')}
+          >
+            Game
+          </button>
+          <button
+            className={`cs-button flex-1 ${
+              activeTab === 'scores' 
+                ? 'border-[var(--cs-text)]' 
+                : 'border-[var(--cs-border)]'
+            }`}
+            onClick={() => setActiveTab('scores')}
+          >
+            Leaderboard
+          </button>
+        </div>
 
           {activeTab === 'game' ? (
             <>
