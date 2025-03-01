@@ -8,9 +8,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
 type Tab = 'game' | 'scores';
@@ -51,17 +51,17 @@ export function Clicker() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['highScores'] });
       toast({
-        title: "Score saved!",
-        description: "Your score has been added to the leaderboard.",
+        title: 'Score saved!',
+        description: 'Your score has been added to the leaderboard.',
       });
       setShowSaveDialog(false);
       resetGame();
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
-        title: "Error saving score",
+        title: 'Error saving score',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     },
   });
@@ -69,7 +69,7 @@ export function Clicker() {
   useEffect(() => {
     if (autoClickerCount > 0) {
       const interval = setInterval(() => {
-        setCount(c => c + (autoClickerCount * multiplier));
+        setCount((c) => c + autoClickerCount * multiplier);
       }, 1000);
       return () => clearInterval(interval);
     }
@@ -106,9 +106,9 @@ export function Clicker() {
       setShowSaveDialog(true);
     } else {
       toast({
-        title: "Nothing to save",
-        description: "Score is 0. Game reset.",
-        variant: "destructive",
+        title: 'Nothing to save',
+        description: 'Score is 0. Game reset.',
+        variant: 'destructive',
       });
       resetGame();
     }
@@ -117,50 +117,57 @@ export function Clicker() {
   const handleSaveScore = () => {
     if (!playerName.trim()) {
       toast({
-        title: "Name required",
-        description: "Please enter your name to save your score.",
-        variant: "destructive",
+        title: 'Name required',
+        description: 'Please enter your name to save your score.',
+        variant: 'destructive',
       });
       return;
     }
     saveScoreMutation.mutate({ name: playerName, score: count });
   };
 
+  const formatCount = (num: number): string => {
+    if (num > 99000000) {
+      return num.toExponential(2);
+    }
+    return num.toLocaleString();
+  };
+
   return (
     <>
-      <Window 
-        title="clicker" 
-        windowId="clicker" 
+      <Window
+        title="clicker"
+        windowId="clicker"
         defaultPosition={{ x: 300, y: 200 }}
       >
         <div className="space-y-4 p-4" style={{ width: '300px' }}>
-        <div className="flex gap-2 mb-4">
-          <button
-            className={`cs-button flex-1 ${
-              activeTab === 'game' 
-                ? 'border-[var(--cs-text)]' 
-                : 'border-[var(--cs-border)]'
-            }`}
-            onClick={() => setActiveTab('game')}
-          >
-            Game
-          </button>
-          <button
-            className={`cs-button flex-1 ${
-              activeTab === 'scores' 
-                ? 'border-[var(--cs-text)]' 
-                : 'border-[var(--cs-border)]'
-            }`}
-            onClick={() => setActiveTab('scores')}
-          >
-            Leaderboard
-          </button>
-        </div>
+          <div className="flex gap-2 mb-4">
+            <button
+              className={`cs-button flex-1 ${
+                activeTab === 'game'
+                  ? 'border-[var(--cs-text)]'
+                  : 'border-[var(--cs-border)]'
+              }`}
+              onClick={() => setActiveTab('game')}
+            >
+              Game
+            </button>
+            <button
+              className={`cs-button flex-1 ${
+                activeTab === 'scores'
+                  ? 'border-[var(--cs-text)]'
+                  : 'border-[var(--cs-border)]'
+              }`}
+              onClick={() => setActiveTab('scores')}
+            >
+              Leaderboard
+            </button>
+          </div>
 
           {activeTab === 'game' ? (
             <>
               <div className="text-center">
-                <h2 className="text-2xl font-bold">{count.toLocaleString()} </h2>
+                <h2 className="text-2xl font-bold">{formatCount(count)}</h2>
                 <p className="text-sm text-gray-400">
                   Multiplier: x{multiplier} | Auto-clickers: {autoClickerCount}
                 </p>
@@ -176,21 +183,29 @@ export function Clicker() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  className={`cs-button ${count < multiplier * 100 ? 'opacity-50' : ''}`}
+                  className={`cs-button ${
+                    count < multiplier * 100 ? 'opacity-50' : ''
+                  }`}
                   onClick={buyMultiplier}
                   disabled={count < multiplier * 100}
                 >
                   Buy Multiplier
-                  <span className="block text-sm">Cost: {(multiplier * 100).toLocaleString()}</span>
+                  <span className="block text-sm">
+                    Cost: {formatCount(multiplier * 100)}
+                  </span>
                 </button>
 
                 <button
-                  className={`cs-button ${count < (autoClickerCount + 1) * 50 ? 'opacity-50' : ''}`}
+                  className={`cs-button ${
+                    count < (autoClickerCount + 1) * 50 ? 'opacity-50' : ''
+                  }`}
                   onClick={buyAutoClicker}
                   disabled={count < (autoClickerCount + 1) * 50}
                 >
                   Buy Auto-clicker
-                  <span className="block text-sm">Cost: {((autoClickerCount + 1) * 50).toLocaleString()}</span>
+                  <span className="block text-sm">
+                    Cost: {formatCount((autoClickerCount + 1) * 50)}
+                  </span>
                 </button>
               </div>
 
@@ -214,7 +229,9 @@ export function Clicker() {
                     <span className="truncate">{score.name}</span>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <div className="font-bold">{score.score.toLocaleString()} </div>
+                    <div className="font-bold">
+                      {formatCount(score.score)}
+                    </div>
                     <div className="text-xs text-gray-400">
                       {new Date(score.date).toLocaleDateString()}
                     </div>
@@ -242,7 +259,7 @@ export function Clicker() {
               />
             </div>
             <div className="text-center">
-              <p className="text-lg">Your Score: {count.toLocaleString()} </p>
+              <p className="text-lg">Your Score: {formatCount(count)}</p>
             </div>
           </div>
           <DialogFooter>
