@@ -25,15 +25,29 @@ ensureScoresFile();
 router.get('/scores', async (req, res) => {
   try {
     const data = await fs.readFile(SCORES_FILE, 'utf-8');
-    const scores = JSON.parse(data);
-    // Sort by score descending and limit to top 10
-    const topScores = scores
-      .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 10);
-    res.json(topScores);
+    let scores = JSON.parse(data);
+
+    // Group scores by name and keep only the highest score for each player
+    const highestScores: { [name: string]: any } = {};
+    scores.forEach((score: any) => {
+      if (
+        !highestScores[score.name] ||
+        score.score > highestScores[score.name].score
+      ) {
+        highestScores[score.name] = score;
+      }
+    });
+
+    // Convert the object back to an array
+    scores = Object.values(highestScores);
+
+    // Sort by score descending
+    scores.sort((a: any, b: any) => b.score - a.score);
+
+    res.json(scores);
   } catch (error) {
     console.error('Error reading scores:', error);
-    res.json([]);
+    res.status(500).json({ error: 'Failed to read scores' });
   }
 });
 
@@ -53,11 +67,35 @@ router.post('/scores', async (req, res) => {
       // File doesn't exist yet, start with empty array
     }
 
+    // Check if a score with the same name already exists
+    const existingScore = scores.find((s: any) => s.name === name);
+
+    if (existingScore && score <= existingScore.score) {
+      return res.status(400).json({
+        error:
+          'A score with this name and higher score already exists. Please enter a different name.',
+      });
+    }
+
     scores.push({
       name,
       score,
       date: new Date().toISOString(),
     });
+
+    // Group scores by name and keep only the highest score for each player
+    const highestScores: { [name: string]: any } = {};
+    scores.forEach((score: any) => {
+      if (
+        !highestScores[score.name] ||
+        score.score > highestScores[score.name].score
+      ) {
+        highestScores[score.name] = score;
+      }
+    });
+
+    // Convert the object back to an array
+    scores = Object.values(highestScores);
 
     // Sort by score descending
     scores.sort((a: any, b: any) => b.score - a.score);

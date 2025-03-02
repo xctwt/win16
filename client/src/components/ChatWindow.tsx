@@ -48,7 +48,7 @@ export function ChatWindow() {
       content,
       timestamp: new Date(),
     };
-    setLocalMessages(prev => [...prev, localMessage]);
+    setLocalMessages((prev) => [...prev, localMessage]);
   };
 
   const handleNicknameCommand = (newNick: string) => {
@@ -106,8 +106,8 @@ export function ChatWindow() {
     const hue = (index * 30) % 360;
     return {
       background: `linear-gradient(90deg, 
-        hsl(${hue}, 100%, 50%), 
-        hsl(${(hue + 60) % 360}, 100%, 50%))`,
+          hsl(${hue}, 100%, 50%), 
+          hsl(${(hue + 60) % 360}, 100%, 50%))`,
       WebkitBackgroundClip: 'text',
       WebkitTextFillColor: 'transparent',
       padding: '2px 0',
@@ -115,10 +115,18 @@ export function ChatWindow() {
   };
 
   // Combine server messages with local system messages
-  const displayMessages = localMessages.map(msg => ({
+  const displayMessages = localMessages.map((msg) => ({
     ...msg,
-    isSystem: msg.nickname === 'System'
+    isSystem: msg.nickname === 'System',
   }));
+
+  const formatTimestamp = (timestamp: string | Date) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
     <Window title="chat" windowId="chat" defaultPosition={{ x: 20, y: 300 }}>
@@ -128,14 +136,16 @@ export function ChatWindow() {
             <div key={msg.id} className="mb-2">
               {msg.isSystem ? (
                 // System messages (commands) in italic and different color
-                <div className="text-cs-border italic">
-                  {msg.content}
-                </div>
+                <div className="text-cs-border italic">{msg.content}</div>
               ) : (
                 // Regular chat messages
                 <div>
+                  <span className="text-xs text-gray-500 ml-1">
+                    {formatTimestamp(msg.timestamp)}{' '}
+                  </span>
                   <span className="font-bold">{msg.nickname}: </span>
                   <span style={getRainbowStyle(index)}>{msg.content}</span>
+                  
                 </div>
               )}
             </div>

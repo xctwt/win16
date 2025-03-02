@@ -44,7 +44,7 @@ export function Clicker() {
         body: JSON.stringify(data),
       });
       if (!response.ok) {
-        throw new Error('Failed to save score');
+        throw new Error(await response.text());
       }
       return response.json();
     },
@@ -57,7 +57,7 @@ export function Clicker() {
       setShowSaveDialog(false);
       resetGame();
     },
-    onError: (error: any) => {
+    onError: async (error: any) => {
       toast({
         title: 'Error saving score',
         description: error.message,
@@ -218,8 +218,8 @@ export function Clicker() {
               </button>
             </>
           ) : (
-            <div className="space-y-2">
-              {highScores.slice(0, 5).map((score, index) => (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {highScores.map((score, index) => (
                 <div
                   key={index}
                   className="flex justify-between items-center border border-cs-border p-2"
