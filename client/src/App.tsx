@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from '@/lib/themeContext';
 import { WindowProvider } from '@/lib/windowContext';
+import { OnekoProvider } from '@/lib/onekoContext';
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
 import "@/lib/cs16.css";
@@ -20,6 +21,7 @@ function Router() {
 function App() {
   return (
     <ThemeProvider>
+      <OnekoProvider>
         <WindowProvider>
           <QueryClientProvider client={queryClient}>
             <div className="app">
@@ -28,6 +30,7 @@ function App() {
             </div>
           </QueryClientProvider>
         </WindowProvider>
+      </OnekoProvider>
     </ThemeProvider>
   );
 }

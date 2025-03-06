@@ -1,39 +1,53 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMessageSchema, insertDrawingSchema } from "@shared/schema";
+import { insertDrawingSchema, type InsertDrawing } from "@shared/schema";
 
 export function registerRoutes(app: Express): Server {
-  app.get("/api/messages", async (_req, res) => {
-    const messages = await storage.getMessages();
-    res.json(messages);
-  });
-
-  app.post("/api/messages", async (req, res) => {
-    const result = insertMessageSchema.safeParse(req.body);
-    if (!result.success) {
-      return res.status(400).json({ error: "Invalid message format" });
+  // Note: Message routes are now handled by messagesRouter in server/api/messages.ts
+  
+  // Get all drawings
+  app.get("/api/drawings", async (_req: Request, res: Response) => {
+    try {
+      const drawings = await storage.getDrawings();
+      res.json(drawings);
+    } catch (error) {
+      console.error('Error fetching drawings:', error);
+      res.status(500).json({ error: "Failed to fetch drawings" });
     }
-    const message = await storage.createMessage(result.data);
-    res.json(message);
   });
 
-  app.get("/api/drawings", async (_req, res) => {
-    const drawings = await storage.getDrawings();
-    res.json(drawings);
-  });
-
-  app.post("/api/drawings", async (req, res) => {
-    const result = insertDrawingSchema.safeParse({
-      name: req.body.name,
-      author: req.body.author,
-      imageData: req.body.image
-    });
-    if (!result.success) {
-      return res.status(400).json({ error: "Invalid drawing format" });
+  // Create a new drawing
+  app.post("/api/drawings", async (req: Request, res: Response) => {
+    try {
+      // Create a drawing object that matches the InsertDrawing interface
+      const drawingData: InsertDrawing = {
+        name: req.body.name,
+        author: req.body.author,
+        image: req.body.image
+      };
+      
+      // Validate with schema
+      const result = insertDrawingSchema.safeParse({
+        name: drawingData.name,
+        author: drawingData.author,
+        imageData: drawingData.image // Map 'image' to 'imageData' for schema validation
+      });
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid drawing format",
+          details: result.error.format()
+        });
+      }
+      
+      // Pass the validated data to storage
+      const drawing = await storage.createDrawing(drawingData);
+      res.json(drawing);
+    } catch (error) {
+      console.error('Error creating drawing:', error);
+      res.status(500).json({ error: "Failed to create drawing" });
     }
-    const drawing = await storage.createDrawing(result.data);
-    res.json(drawing);
   });
 
   return createServer(app);

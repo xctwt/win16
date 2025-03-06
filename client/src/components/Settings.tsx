@@ -1,10 +1,12 @@
 // components/Settings.tsx
 import { Window } from './Windows';
 import { useTheme } from '@/lib/themeContext';
-import { Sun, Moon } from 'lucide-react';
+import { useOneko } from '@/lib/onekoContext';
+import { Sun, Moon, Cat } from 'lucide-react';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
+  const { isOnekoEnabled, toggleOneko } = useOneko();
 
   return (
     <Window title="settings" windowId="settings" defaultPosition={{ x: 200, y: 200 }}>
@@ -28,6 +30,23 @@ export function Settings() {
               <Sun className="w-4 h-4" />
               <span>Light</span>
             </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="text-sm font-bold mb-2">Features</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="oneko-toggle"
+              checked={isOnekoEnabled}
+              onChange={toggleOneko}
+              className="cs-checkbox"
+            />
+            <label htmlFor="oneko-toggle" className="flex items-center gap-2 cursor-pointer">
+              <Cat className="w-4 h-4" />
+              <span>oneko</span>
+            </label>
           </div>
         </div>
       </div>

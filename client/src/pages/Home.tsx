@@ -7,7 +7,6 @@ import { DrawingsViewer } from '@/components/DrawingsViewer';
 import { Clicker } from '@/components/Clicker';
 import { Desktop } from '@/components/Desktop';
 import { useWindowState } from '@/lib/windowContext';
-import { initOneko } from '@/lib/oneko';
 import { Screensaver } from '@/components/Screensaver';
 import { Settings } from '@/components/Settings';
 
@@ -32,10 +31,6 @@ const IDLE_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
 export default function Home() {
   const [showScreensaver, setShowScreensaver] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
-
-  useEffect(() => {
-    initOneko();
-  }, []);
 
   const updateLastActivity = useCallback(() => {
     setLastActivity(Date.now());
