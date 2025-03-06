@@ -6,3 +6,4 @@ vite.config.ts.*
 *.tar.gz
 uploads
 data
+bun.lockb

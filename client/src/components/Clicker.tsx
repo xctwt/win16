@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import crypto from 'crypto-js';
 
 type Tab = 'game' | 'scores';
 type Score = {
@@ -196,7 +197,7 @@ export function Clicker() {
     onSuccess: () => {
       setShowSaveDialog(false);
       toast({
-        title: 'Score saved! <3',
+        title: 'Score saved!',
         description: 'Your score has been saved to the leaderboard.',
       });
       queryClient.invalidateQueries({ queryKey: ['scores'] });
@@ -204,7 +205,7 @@ export function Clicker() {
     onError: (error: Error) => {
       console.error('Error saving score:', error);
       toast({
-        title: 'Error saving score >.<',
+        title: 'Error saving score',
         description:
           error.message || 'Failed to save your score. Please try again.',
         variant: 'destructive',
@@ -347,7 +348,7 @@ export function Clicker() {
 
     if (count < prestigeCost) {
       toast({
-        title: 'Not enough points >.<',
+        title: 'Not enough points',
         description: `You need at least ${formatCount(
           prestigeCost
         )} points to prestige.`,
@@ -369,7 +370,7 @@ export function Clicker() {
     setCriticalMultiplier(5 + newPrestige); // Prestige bonus
 
     toast({
-      title: 'Prestige Level Up! \\(≧∇≦)/',
+      title: 'Prestige Level Up!',
       description: `You are now ${
         PRESTIGE_LEVELS[Math.min(newPrestige, PRESTIGE_LEVELS.length - 1)].name
       } prestige!`,
@@ -386,12 +387,12 @@ export function Clicker() {
     setPrestige(0);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (count > 0) {
       setShowSaveDialog(true);
     } else {
       toast({
-        title: 'Nothing to save :(',
+        title: 'Nothing to save',
         description: 'Score is 0. Game reset.',
         variant: 'destructive',
       });
@@ -407,33 +408,18 @@ export function Clicker() {
     return tokenData;
   };
 
-  // Simple hash function for demonstration
+  // Hash using crypto-js
   function hashString(str: string): string {
     console.log('Client hashing string:', str);
-
-    // This is a very simple hash function for demonstration
-    // In a real app, use a proper crypto library like crypto-js
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-
-    // Convert to hex string and pad to ensure it's long enough
-    const hexHash = Math.abs(hash).toString(16).padStart(8, '0');
-
-    // Repeat the hash to make it look more like a real hash
-    const finalHash = hexHash.repeat(8);
-    console.log('Client generated hash:', finalHash);
-
-    return finalHash;
+    const hash = crypto.SHA256(str).toString();
+    console.log('Client generated hash:', hash);
+    return hash;
   }
 
-  const handleSaveScore = () => {
+  const handleSaveScore = async () => {
     if (!playerName.trim()) {
       toast({
-        title: 'Name required!',
+        title: 'Name required',
         description: 'Please enter your name to save your score.',
         variant: 'destructive',
       });
@@ -447,7 +433,6 @@ export function Clicker() {
     const timestamp = Date.now();
 
     // Generate a token that includes the score
-    // This ensures the score can't be changed without invalidating the token
     const tokenData = generateVerificationToken(timestamp, count);
 
     // Hash the token data
@@ -463,13 +448,15 @@ export function Clicker() {
       token: token,
     };
 
-    console.log('Submitting score with verification:', {
-      ...submissionData,
-      token: submissionData.token,
-      tokenData: tokenData, // Log the raw token data for debugging
-    });
+    try {
+      await saveScoreMutation.mutateAsync(submissionData);
 
-    saveScoreMutation.mutate(submissionData);
+      // Reset game state only after successful save
+      resetGame();
+    } catch (error) {
+      // saveScoreMutation handles the error toast
+      console.error('Error during save:', error);
+    }
   };
 
   const formatCount = (num: number): string => {
@@ -499,6 +486,7 @@ export function Clicker() {
   const critChanceCost = Math.floor(
     criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)
   );
+  const critChanceAlmostMaxed = criticalChance >= 0.45;
   const critChanceMaxed = criticalChance >= 0.5;
 
   return (
@@ -556,7 +544,7 @@ export function Clicker() {
                 <h2 className={`text-2xl font-bold ${prestigeColor}`}>{formatCount(count)}</h2>
                 <p className="text-sm text-gray-400">
                   Multiplier: x{multiplier} | Auto-clickers: {autoClickerCount} (
-                  {Math.floor(autoClickerFrequency)}/s)
+                  {autoClickerFrequency.toFixed(1)}/s)
                 </p>
                 <p className="text-xs text-gray-400">
                   Critical: {Math.round(criticalChance * 100)}% chance for x
@@ -655,7 +643,9 @@ export function Clicker() {
                     <span>Crit Chance</span>
                   </div>
                   <span className="block text-sm">
-                    {critChanceMaxed ? 'Sold Out' : formatCount(critChanceCost)}
+                    {critChanceAlmostMaxed
+                      ? 'Sold Out'
+                      : formatCount(critChanceCost)}
                   </span>
                 </button>
 
@@ -737,9 +727,9 @@ export function Clicker() {
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span className="font-bold min-w-[32px]">#{index + 1}</span>
                         <span className={`truncate ${getScoreColorClass(score.color)}`}>
-                          {score.prestige && score.prestige > 0 && (
+                          {score.prestige && score.prestige > 0 ? (
                             <Crown className="w-3 h-3 inline mr-1" />
-                          )}
+                          ) : null}
                           {score.name}
                         </span>
                       </div>
@@ -767,7 +757,7 @@ export function Clicker() {
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Save Your Score owo</DialogTitle>
+            <DialogTitle>Save Your Score</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -789,9 +779,6 @@ export function Clicker() {
                   Prestige Level: {prestigeName}
                 </p>
               )}
-              <div className="mt-2 text-xs text-gray-400 flex items-center justify-center gap-2">
-                <span>Verification: Ready</span>
-              </div>
             </div>
           </div>
           <DialogFooter>
@@ -800,7 +787,7 @@ export function Clicker() {
               onClick={handleSaveScore}
               disabled={saveScoreMutation.isPending}
             >
-              {saveScoreMutation.isPending ? 'Saving... <3' : 'Save Score'}
+              {saveScoreMutation.isPending ? 'Saving...' : 'Save Score'}
             </button>
           </DialogFooter>
         </DialogContent>
