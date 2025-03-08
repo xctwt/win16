@@ -14,8 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const CANVAS_SIZE = 256;
-const DEFAULT_COLORS = ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#000000'];
-const MAX_RECENT_COLORS = 8;
+const DEFAULT_COLORS = ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+const MAX_RECENT_COLORS = 7;
 
 // Custom styles to remove border-radius from react-colorful
 const customColorfulStyles = `
