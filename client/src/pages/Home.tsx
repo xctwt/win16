@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { MusicPlayer } from '@/components/MusicPlayer';
 import { InfoWindow } from '@/components/InfoWindow';
 import { ChatWindow } from '@/components/ChatWindow';
@@ -10,7 +10,7 @@ import { useWindowState } from '@/lib/windowContext';
 import { Screensaver } from '@/components/Screensaver';
 import { Settings } from '@/components/Settings';
 
-function Windows() {
+const Windows = memo(function Windows() {
   const { windowStates } = useWindowState();
 
   return (
@@ -24,7 +24,7 @@ function Windows() {
       {windowStates.settings.isOpen && <Settings />}
     </>
   );
-}
+});
 
 const IDLE_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, useReducer, memo } from 'react';
 import { Window } from './Windows';
 import {
   Sparkles,
@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import crypto from 'crypto-js';
+import debounce from 'lodash.debounce';
 
 type Tab = 'game' | 'scores';
 type Score = {
@@ -48,6 +49,7 @@ type ClickAnimationData = {
   x: number;
   y: number;
   isCritical: boolean;
+  timestamp?: number;
 };
 
 // Prestige levels and their colors
@@ -145,7 +147,7 @@ function ClickAnimation({ value, x, y, isCritical = false }: { value: number; x:
   );
 }
 
-export function Clicker() {
+export const Clicker = memo(function Clicker() {
   const [count, setCount] = useState(0);
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickerCount, setAutoClickerCount] = useState(0);
@@ -157,56 +159,71 @@ export function Clicker() {
   const [prestige, setPrestige] = useState(0);
   const [criticalChance, setCriticalChance] = useState(0.05); // 5% base chance
   const [criticalMultiplier, setCriticalMultiplier] = useState(5); // 5x base critical multiplier
-  const [clickAnimations, setClickAnimations] = useState<ClickAnimationData[]>([]);
+  
+  // Replaced useState with useReducer for clickAnimations
+  const [clickAnimations, dispatchClickAnimations] = useReducer(
+    (state: ClickAnimationData[], action: { type: string; payload: any }) => {
+      switch (action.type) {
+        case 'ADD_ANIMATION':
+          return [...state, action.payload];
+        case 'REMOVE_ANIMATION':
+          return state.filter(anim => anim.id !== action.payload.id);
+        case 'REMOVE_OLD_ANIMATIONS':
+          return state.filter(anim => 
+            anim.timestamp && anim.timestamp > action.payload.timestamp
+          );
+        default:
+          return state;
+      }
+    },
+    []
+  );
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch seasons
-  const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } = useQuery({
-    queryKey: ['seasons'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/seasons');
-        const data = await response.json();
+  // Memoized defaultPosition
+  const defaultPosition = useMemo(() => ({ x: 75, y: 130 }), []);
 
-        // If we're on 'current', update to show what the current season actually is
-        if (selectedSeason === 'current' && data.currentSeason) {
-          setSelectedSeason(data.currentSeason.toString());
-        }
+  // Calculate current prestige level
+  const currentPrestigeLevel = useMemo(() => Math.min(prestige, PRESTIGE_LEVELS.length - 1), [prestige]);
+  
+  // Memoize prestige-related values
+  const prestigeColor = useMemo(() => PRESTIGE_LEVELS[currentPrestigeLevel].color, [currentPrestigeLevel]);
+  const prestigeName = useMemo(() => PRESTIGE_LEVELS[currentPrestigeLevel].name, [currentPrestigeLevel]);
 
-        return data;
-      } catch (error) {
-        console.error('Error fetching seasons:', error);
-        return { seasons: [1, 2], currentSeason: 2 };
-      }
-    },
-  });
+  // Memoized formatCount function
+  const formatCount = useCallback((num: number | null | undefined): string => {
+    // Handle null or undefined values
+    if (num === null || num === undefined) {
+      console.warn('Attempted to format null or undefined number');
+      return '0';
+    }
 
-  // Fetch high scores
-  const { data: highScores = [] } = useQuery<Score[]>({
-    queryKey: ['highScores', selectedSeason],
-    queryFn: async () => {
-      const response = await fetch(`/api/scores?season=${selectedSeason}`);
-      const data = await response.json();
+    // Handle NaN
+    if (isNaN(num)) {
+      console.warn('Attempted to format NaN');
+      return '0';
+    }
 
-      // Sort by prestige first, then by score
-      if (Array.isArray(data)) {
-        return data.sort((a, b) => {
-          // First sort by prestige (higher first)
-          const prestigeDiff = (b.prestige || 0) - (a.prestige || 0);
-          if (prestigeDiff !== 0) return prestigeDiff;
+    if (num > 99000000) {
+      return num.toExponential(2);
+    }
+    return num.toLocaleString();
+  }, []);
 
-          // Then sort by score (higher first)
-          return b.score - a.score;
-        });
-      }
+  // Helper function to get the appropriate CSS class for a score's color
+  const getScoreColorClass = useCallback((scoreColor?: string): string => {
+    if (!scoreColor) return '';
 
-      // Ensure we always return an array
-      return Array.isArray(data) ? data : [];
-    },
-  });
+    // Handle the theme-adaptive color
+    if (scoreColor === 'theme-adaptive') {
+      return 'text-foreground';
+    }
+
+    return `text-${scoreColor}`;
+  }, []);
 
   // Save score mutation
   const saveScoreMutation = useMutation({
@@ -258,206 +275,348 @@ export function Clicker() {
     },
   });
 
+  // Helper functions for score saving
+  const hashString = useCallback((str: string): string => {
+    return crypto.SHA256(str).toString();
+  }, []);
+
+  const generateVerificationToken = useCallback(
+    (name: string, score: number, prestige: number): string => {
+      const timestamp = Date.now();
+      const secret = 'win16-clicker-game'; // Simple secret, would be env var in production
+      const dataString = `${name}|${score}|${prestige}|${timestamp}|${secret}`;
+      return hashString(dataString);
+    },
+    [hashString]
+  );
+
+  const resetGame = useCallback(() => {
+    setCount(0);
+    setMultiplier(1);
+    setAutoClickerCount(0);
+    setAutoClickerFrequency(1);
+    setCriticalChance(0.05);
+    setCriticalMultiplier(5);
+    setShowSaveDialog(false);
+    toast({
+      title: 'Game Reset',
+      description: 'Your game has been reset. Starting fresh!',
+    });
+  }, [toast]);
+
+  const handleSaveScore = useCallback(async () => {
+    if (!playerName.trim()) {
+      toast({
+        title: 'Name Required',
+        description: 'Please enter your name to save your score.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const timestamp = Date.now();
+      const token = generateVerificationToken(playerName, count, prestige);
+      
+      const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
+      const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
+      
+      const submissionData = {
+        name: playerName,
+        score: count,
+        prestige,
+        color: prestigeColor,
+        timestamp,
+        token,
+      };
+
+      console.log('Submitting score:', {
+        ...submissionData,
+        token: token.substring(0, 10) + '...',
+      });
+
+      await saveScoreMutation.mutateAsync(submissionData);
+      
+      // Reset game after successful submission
+      resetGame();
+      // saveScoreMutation handles the error toast
+    } catch (error) {
+      console.error('Error in handleSaveScore:', error);
+    }
+  }, [playerName, count, prestige, generateVerificationToken, hashString, formatCount, saveScoreMutation, resetGame, toast]);
+
+  // Fetch seasons
+  const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } = useQuery({
+    queryKey: ['seasons'],
+    queryFn: async () => {
+      try {
+        const response = await fetch('/api/seasons');
+        const data = await response.json();
+
+        // If we're on 'current', update to show what the current season actually is
+        if (selectedSeason === 'current' && data.currentSeason) {
+          setSelectedSeason(data.currentSeason.toString());
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Error fetching seasons:', error);
+        return { seasons: [1, 2], currentSeason: 2 };
+      }
+    },
+  });
+
+  // Fetch high scores
+  const { data: highScores = [] } = useQuery<Score[]>({
+    queryKey: ['highScores', selectedSeason],
+    queryFn: async () => {
+      const response = await fetch(`/api/scores?season=${selectedSeason}`);
+      const data = await response.json();
+
+      // Sort by prestige first, then by score
+      if (Array.isArray(data)) {
+        return data.sort((a, b) => {
+          // First sort by prestige (higher first)
+          const prestigeDiff = (b.prestige || 0) - (a.prestige || 0);
+          if (prestigeDiff !== 0) return prestigeDiff;
+
+          // Then sort by score (higher first)
+          return b.score - a.score;
+        });
+      }
+
+      // Ensure we always return an array
+      return Array.isArray(data) ? data : [];
+    },
+  });
+
+  // Memoized autoClickerHandler
+  const autoClickerHandler = useCallback(() => {
+    setCount(c => c + autoClickerCount * multiplier);
+  }, [autoClickerCount, multiplier]);
+
   useEffect(() => {
     if (autoClickerCount > 0) {
-      const interval = setInterval(() => {
-        setCount((c) => c + autoClickerCount * multiplier);
-      }, 1000 / autoClickerFrequency);
+      const interval = setInterval(autoClickerHandler, 1000 / autoClickerFrequency);
       return () => clearInterval(interval);
     }
-  }, [autoClickerCount, multiplier, autoClickerFrequency]);
+  }, [autoClickerHandler, autoClickerFrequency, autoClickerCount]);
 
-  // Remove click animations after they fade out
+  // Remove click animations using timestamp-based cleanup
   useEffect(() => {
     if (clickAnimations.length > 0) {
+      const now = Date.now();
       const timer = setTimeout(() => {
-        // Remove all animations that are older than 1 second
-        const now = Date.now();
-        setClickAnimations((prev) => 
-          prev.filter(anim => {
-            // Extract timestamp from the ID (we're using Date.now() + Math.random() for IDs)
-            const animTimestamp = Math.floor(anim.id);
-            return now - animTimestamp < 1000;
-          })
-        );
-      }, 100); // Check more frequently
+        // Use the reducer to filter out old animations
+        dispatchClickAnimations({
+          type: 'REMOVE_OLD_ANIMATIONS',
+          payload: { timestamp: now - 1000 }
+        });
+      }, 100); // Adjust as needed
       return () => clearTimeout(timer);
     }
   }, [clickAnimations]);
 
-  const handleClick = (e?: React.MouseEvent) => {
-    // Determine if it's a critical hit
-    const isCritical = Math.random() < criticalChance;
-    const clickValue = isCritical ? multiplier * criticalMultiplier : multiplier;
+  // Throttled handleClick function
+  const handleClick = useCallback(
+    debounce((e?: React.MouseEvent) => {
+      // Determine if it's a critical hit
+      const isCritical = Math.random() < criticalChance;
+      const clickValue = isCritical ? multiplier * criticalMultiplier : multiplier;
 
-    // Add the value to the score
-    setCount(count + clickValue);
+      // Add the value to the score
+      setCount(c => c + clickValue);
 
-    // Get click position
-    let x, y;
+      // Get click position
+      let x, y;
 
-    if (e) {
-      // Use exact click position
-      x = e.clientX;
-      y = e.clientY;
-    } else if (buttonRef.current) {
-      // Fallback to button center
-      const rect = buttonRef.current.getBoundingClientRect();
-      x = rect.left + rect.width / 2;
-      y = rect.top + rect.height / 2;
-    } else {
-      // Last resort fallback
-      x = window.innerWidth / 2;
-      y = window.innerHeight / 2;
-    }
-
-    // Generate a truly unique ID for each animation
-    const baseId = Date.now() + Math.random();
-
-    // Create animations based on hit type
-    if (isCritical) {
-      // For small critical hits (< 10), just show one big number
-      if (clickValue < 10) {
-        setClickAnimations((prev) => [...prev, {
-          id: baseId + Math.random(),
-          value: clickValue,
-          x: x,
-          y: y,
-          isCritical: true
-        }]);
+      if (e) {
+        // Use exact click position
+        x = e.clientX;
+        y = e.clientY;
+      } else if (buttonRef.current) {
+        // Fallback to button center
+        const rect = buttonRef.current.getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
       } else {
-        // For larger critical hits, show multiple particles
-        const baseParticleCount = 3;
-        const maxExtraParticles = Math.min(4, Math.floor(Math.log10(clickValue)));
-        const particleCount = baseParticleCount + maxExtraParticles;
-        
+        // Last resort fallback
+        x = window.innerWidth / 2;
+        y = window.innerHeight / 2;
+      }
+
+      // Generate a truly unique ID for each animation
+      const baseId = Date.now() + Math.random();
+
+      // Create animations based on hit type
+      if (isCritical) {
+        // For small critical hits (< 10), just show one big number
+        if (clickValue < 10) {
+          dispatchClickAnimations({
+            type: 'ADD_ANIMATION',
+            payload: {
+              id: baseId + Math.random(),
+              value: clickValue,
+              x: x,
+              y: y,
+              isCritical: true,
+              timestamp: Date.now(),
+            },
+          });
+        } else {
+          // For larger critical hits, show multiple particles
+          const baseParticleCount = 3;
+          const maxExtraParticles = Math.min(4, Math.floor(Math.log10(clickValue)));
+          const particleCount = baseParticleCount + maxExtraParticles;
+
+          const newAnimations: ClickAnimationData[] = [];
+
+          // Always show the main value in the first particle
+          newAnimations.push({
+            id: baseId + Math.random(),
+            value: clickValue,
+            x: x,
+            y: y,
+            isCritical: true,
+            timestamp: Date.now(),
+          });
+
+          // For secondary particles, ensure they show meaningful values
+          for (let i = 1; i < particleCount; i++) {
+            // Add more random offset for a true popcorn effect
+            const offsetX = Math.random() * 60 - 30;
+            const offsetY = Math.random() * 40 - 20;
+
+            // For critical hits, secondary particles should show at least 25% of the main value
+            // This ensures even small crits (like 5) won't show tiny numbers
+            const minValue = Math.max(2, Math.floor(clickValue * 0.25));
+            const maxValue = Math.floor(clickValue * 0.75);
+            const particleValue = Math.floor(Math.random() * (maxValue - minValue + 1) + minValue);
+
+            newAnimations.push({
+              id: baseId + i + Math.random(),
+              value: particleValue,
+              x: x + offsetX,
+              y: y + offsetY,
+              isCritical: true,
+              timestamp: Date.now(),
+            });
+          }
+
+          newAnimations.forEach(anim => {
+            dispatchClickAnimations({
+              type: 'ADD_ANIMATION',
+              payload: anim,
+            });
+          });
+        }
+      } else {
+        // For non-critical hits, add 1-3 particles based on multiplier size
+        const particleCount = multiplier > 100 ? 3 : multiplier > 10 ? 2 : 1;
         const newAnimations: ClickAnimationData[] = [];
-        
-        // Always show the main value in the first particle
+
+        // For regular hits, just show the actual value
         newAnimations.push({
           id: baseId + Math.random(),
           value: clickValue,
           x: x,
           y: y,
-          isCritical: true
+          isCritical: false,
+          timestamp: Date.now(),
         });
-        
-        // For secondary particles, ensure they show meaningful values
-        for (let i = 1; i < particleCount; i++) {
-          // Add more random offset for a true popcorn effect
-          const offsetX = Math.random() * 60 - 30;
-          const offsetY = Math.random() * 40 - 20;
-          
-          // For critical hits, secondary particles should show at least 25% of the main value
-          // This ensures even small crits (like 5) won't show tiny numbers
-          const minValue = Math.max(2, Math.floor(clickValue * 0.25));
-          const maxValue = Math.floor(clickValue * 0.75);
-          const particleValue = Math.floor(Math.random() * (maxValue - minValue + 1) + minValue);
-          
-          newAnimations.push({
-            id: baseId + i + Math.random(),
-            value: particleValue,
-            x: x + offsetX,
-            y: y + offsetY,
-            isCritical: true
-          });
+
+        // Add smaller secondary particles only for larger hits
+        if (clickValue > 10) {
+          for (let i = 1; i < particleCount; i++) {
+            const offsetX = Math.random() * 30 - 15;
+            const offsetY = Math.random() * 20 - 10;
+
+            // For non-critical secondary particles, show 33-66% of the main value
+            const particleValue = Math.floor(clickValue * (0.33 + Math.random() * 0.33));
+
+            newAnimations.push({
+              id: baseId + i + Math.random(),
+              value: particleValue,
+              x: x + offsetX,
+              y: y + offsetY,
+              isCritical: false,
+              timestamp: Date.now(),
+            });
+          }
         }
-        
-        setClickAnimations((prev) => [...prev, ...newAnimations]);
-      }
-    } else {
-      // For non-critical hits, add 1-3 particles based on multiplier size
-      const particleCount = multiplier > 100 ? 3 : multiplier > 10 ? 2 : 1;
-      const newAnimations: ClickAnimationData[] = [];
-      
-      // For regular hits, just show the actual value
-      newAnimations.push({
-        id: baseId + Math.random(),
-        value: clickValue,
-        x: x,
-        y: y,
-        isCritical: false
-      });
 
-      // Add smaller secondary particles only for larger hits
-      if (clickValue > 10) {
-        for (let i = 1; i < particleCount; i++) {
-          const offsetX = Math.random() * 30 - 15;
-          const offsetY = Math.random() * 20 - 10;
-          
-          // For non-critical secondary particles, show 33-66% of the main value
-          const particleValue = Math.floor(clickValue * (0.33 + Math.random() * 0.33));
-          
-          newAnimations.push({
-            id: baseId + i + Math.random(),
-            value: particleValue,
-            x: x + offsetX,
-            y: y + offsetY,
-            isCritical: false
+        newAnimations.forEach(anim => {
+          dispatchClickAnimations({
+            type: 'ADD_ANIMATION',
+            payload: anim,
           });
-        }
+        });
       }
-      
-      setClickAnimations((prev) => [...prev, ...newAnimations]);
-    }
-  };
+    }, 100), // Throttle to 100ms
+    [criticalChance, criticalMultiplier, multiplier]
+  );
 
-  const buyMultiplier = () => {
-    // Make multiplier cost grow exponentially
-    const cost = Math.floor(multiplier * 100 * Math.pow(1.2, multiplier));
-    if (count >= cost) {
-      setCount(count - cost);
-      setMultiplier(multiplier + 1);
-    }
-  };
+  // Memoized cost calculations
+  const multiplierCost = useMemo(() => Math.floor(multiplier * 100 * Math.pow(1.2, multiplier)), [multiplier]);
+  const autoClickerCost = useMemo(
+    () => Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount)),
+    [autoClickerCount]
+  );
+  const autoClickerFrequencyCost = useMemo(
+    () => Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency)),
+    [autoClickerFrequency]
+  );
+  const critChanceCost = useMemo(
+    () => Math.floor(criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)),
+    [criticalChance]
+  );
+  const critMultiplierCost = useMemo(
+    () => Math.floor(criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5)),
+    [criticalMultiplier]
+  );
 
-  const buyAutoClicker = () => {
-    // Make auto-clicker cost grow faster
-    const cost = Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount));
-    if (count >= cost) {
-      setCount(count - cost);
-      setAutoClickerCount(autoClickerCount + 1);
+  const buyMultiplier = useCallback(() => {
+    if (count >= multiplierCost) {
+      setCount(c => c - multiplierCost);
+      setMultiplier(m => m + 1);
     }
-  };
+  }, [count, multiplierCost]);
 
-  const upgradeAutoClickerFrequency = () => {
-    // Make clicker speed cost grow much faster (quadratic growth)
-    const cost = Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency));
-    if (count >= cost) {
-      setCount(count - cost);
-      setAutoClickerFrequency((prev) => prev + 0.5);
+  const buyAutoClicker = useCallback(() => {
+    if (count >= autoClickerCost) {
+      setCount(c => c - autoClickerCost);
+      setAutoClickerCount(ac => ac + 1);
     }
-  };
+  }, [count, autoClickerCost]);
 
-  const upgradeCriticalChance = () => {
-    // Make critical chance cost grow faster
-    const cost = Math.floor(
-      criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)
-    );
-    if (count >= cost) {
-      setCount(count - cost);
-      setCriticalChance((prev) => Math.min(prev + 0.05, 0.5)); // Cap at 50%
+  const upgradeAutoClickerFrequency = useCallback(() => {
+    if (count >= autoClickerFrequencyCost) {
+      setCount(c => c - autoClickerFrequencyCost);
+      setAutoClickerFrequency(freq => freq + 0.5);
     }
-  };
+  }, [count, autoClickerFrequencyCost]);
 
-  const upgradeCriticalMultiplier = () => {
-    // Make critical multiplier cost grow faster
-    const cost = Math.floor(
-      criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5)
-    );
-    if (count >= cost) {
-      setCount(count - cost);
-      setCriticalMultiplier((prev) => prev + 1);
+  const upgradeCriticalChance = useCallback(() => {
+    if (count >= critChanceCost && criticalChance < 0.5) {
+      setCount(c => c - critChanceCost);
+      setCriticalChance(cc => Math.min(cc + 0.05, 0.5)); // Cap at 50%
     }
-  };
+  }, [count, critChanceCost, criticalChance]);
+
+  const upgradeCriticalMultiplier = useCallback(() => {
+    if (count >= critMultiplierCost) {
+      setCount(c => c - critMultiplierCost);
+      setCriticalMultiplier(cm => cm + 1);
+    }
+  }, [count, critMultiplierCost]);
 
   // Calculate prestige cost based on current prestige level
-  const getPrestigeCost = (currentPrestige: number): number => {
+  const getPrestigeCost = useCallback((currentPrestige: number): number => {
     // Base cost is 1 million, then 10x for each level
     return 1000000 * Math.pow(10, currentPrestige);
-  };
+  }, []);
 
-  const performPrestige = () => {
+  const performPrestige = useCallback(() => {
     const prestigeCost = getPrestigeCost(prestige);
 
     if (count < prestigeCost) {
@@ -489,19 +648,9 @@ export function Clicker() {
         PRESTIGE_LEVELS[Math.min(newPrestige, PRESTIGE_LEVELS.length - 1)].name
       } prestige!`,
     });
-  };
+  }, [count, prestige, getPrestigeCost, toast, formatCount]);
 
-  const resetGame = () => {
-    setCount(0);
-    setMultiplier(1);
-    setAutoClickerCount(0);
-    setAutoClickerFrequency(1);
-    setCriticalChance(0.05);
-    setCriticalMultiplier(5);
-    setPrestige(0);
-  };
-
-  const handleReset = async () => {
+  const handleReset = useCallback(async () => {
     if (count > 0) {
       setShowSaveDialog(true);
     } else {
@@ -512,152 +661,63 @@ export function Clicker() {
       });
       resetGame();
     }
-  };
+  }, [count, resetGame, toast]);
 
-  // Function to generate a verification token
-  const generateVerificationToken = (timestamp: number, score: number): string => {
-    // Create token data using timestamp and score
-    const tokenData = `${timestamp}:${score}`;
-    console.log('Generated token data:', tokenData);
-    return tokenData;
-  };
+  // Memoized save dialog
+  const saveDialog = useMemo(() => (
+    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Save Your Score</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Your Name</Label>
+            <Input
+              id="name"
+              value={playerName}
+              onChange={e => setPlayerName(e.target.value)}
+              placeholder="Enter your name"
+            />
+          </div>
+          <div className="space-y-2">
+            <p className={`text-lg ${prestigeColor}`}>
+              Score: {formatCount(count)}
+            </p>
+            {prestige > 0 && (
+              <p className={`text-sm ${prestigeColor}`}>
+                Prestige Level: {prestigeName}
+              </p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <button
+            className="cs-button"
+            onClick={handleSaveScore}
+            disabled={saveScoreMutation.isPending}
+          >
+            {saveScoreMutation.isPending ? 'Saving...' : 'Save Score'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ), [
+    showSaveDialog,
+    setShowSaveDialog,
+    playerName,
+    prestigeColor,
+    count,
+    prestige,
+    prestigeName,
+    handleSaveScore,
+    saveScoreMutation.isPending,
+  ]);
 
-  // Hash using crypto-js
-  function hashString(str: string): string {
-    console.log('Client hashing string:', str);
-    const hash = crypto.SHA256(str).toString();
-    console.log('Client generated hash:', hash);
-    return hash;
-  }
-
-  const handleSaveScore = async () => {
-    if (!playerName.trim()) {
-      toast({
-        title: 'Name required',
-        description: 'Please enter your name to save your score.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Check if score is too large to be safely handled by JavaScript
-    const MAX_SAFE_SCORE = Number.MAX_SAFE_INTEGER; // 9007199254740991
-    if (count > MAX_SAFE_SCORE) {
-      toast({
-        title: 'Score too large',
-        description: `Your score (${formatCount(count)}) exceeds the maximum allowed value. The score will be capped at ${formatCount(MAX_SAFE_SCORE)}.`,
-        variant: 'destructive',
-      });
-      // Cap the score at MAX_SAFE_SCORE
-      const cappedScore = MAX_SAFE_SCORE;
-      
-      const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
-      const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
-
-      // Generate current timestamp
-      const timestamp = Date.now();
-
-      // Generate a token that includes the capped score
-      const tokenData = generateVerificationToken(timestamp, cappedScore);
-
-      // Hash the token data
-      const token = hashString(tokenData);
-
-      // Create the submission data with verification and capped score
-      const submissionData = {
-        name: playerName,
-        score: cappedScore,
-        prestige: prestige,
-        color: prestigeColor,
-        timestamp: timestamp,
-        token: token,
-      };
-
-      try {
-        await saveScoreMutation.mutateAsync(submissionData);
-        // Reset game state only after successful save
-        resetGame();
-      } catch (error) {
-        // saveScoreMutation handles the error toast
-        console.error('Error during save:', error);
-      }
-      return;
-    }
-
-    const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
-    const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
-
-    // Generate current timestamp
-    const timestamp = Date.now();
-
-    // Generate a token that includes the score
-    const tokenData = generateVerificationToken(timestamp, count);
-
-    // Hash the token data
-    const token = hashString(tokenData);
-
-    // Create the submission data with verification
-    const submissionData = {
-      name: playerName,
-      score: count,
-      prestige: prestige,
-      color: prestigeColor,
-      timestamp: timestamp,
-      token: token,
-    };
-
-    try {
-      await saveScoreMutation.mutateAsync(submissionData);
-
-      // Reset game state only after successful save
-      resetGame();
-    } catch (error) {
-      // saveScoreMutation handles the error toast
-      console.error('Error during save:', error);
-    }
-  };
-
-  const formatCount = (num: number | null | undefined): string => {
-    // Handle null or undefined values
-    if (num === null || num === undefined) {
-      console.warn('Attempted to format null or undefined number');
-      return '0';
-    }
-    
-    // Handle NaN
-    if (isNaN(num)) {
-      console.warn('Attempted to format NaN');
-      return '0';
-    }
-    
-    if (num > 99000000) {
-      return num.toExponential(2);
-    }
-    return num.toLocaleString();
-  };
-
-  // Get current prestige level info
-  const currentPrestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
-  const prestigeColor = PRESTIGE_LEVELS[currentPrestigeLevel].color;
-  const prestigeName = PRESTIGE_LEVELS[currentPrestigeLevel].name;
-
-  // Helper function to get the appropriate CSS class for a score's color
-  const getScoreColorClass = (scoreColor?: string): string => {
-    if (!scoreColor) return '';
-
-    // Handle the theme-adaptive color
-    if (scoreColor === 'theme-adaptive') {
-      return 'text-foreground';
-    }
-
-    return `text-${scoreColor}`;
-  };
-
-  const critChanceCost = Math.floor(
-    criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)
-  );
-  const critChanceAlmostMaxed = criticalChance >= 0.45;
-  const critChanceMaxed = criticalChance >= 0.5;
+  const MemoizedSparklesLarge = useMemo(() => <Sparkles className="w-6 h-6" />, []);
+  const MemoizedSparklesSmall = useMemo(() => <Sparkles className="w-4 h-4" />, []);
+  const MemoizedCrownSmall = useMemo(() => <Crown className="w-4 h-4 inline mr-1" />, []);
+  const MemoizedRotateCcw = useMemo(() => <RotateCcw className="w-4 h-4" />, []);
 
   return (
     <>
@@ -674,7 +734,7 @@ export function Clicker() {
       <Window
         title="clicker - season 2"
         windowId="clicker"
-        defaultPosition={{ x: 75, y: 130 }}
+        defaultPosition={defaultPosition}
       >
         <div className="space-y-4 p-4" style={{ width: '300px' }}>
           <div className="flex gap-2 mb-4">
@@ -706,7 +766,7 @@ export function Clicker() {
                 <div className="absolute top-0 right-0">
                   {prestige > 0 && (
                     <div className={`flex items-center gap-1 ${prestigeColor}`}>
-                      <Crown className="w-4 h-4" />
+                      {MemoizedCrownSmall}
                       <span>{prestigeName}</span>
                     </div>
                   )}
@@ -727,67 +787,44 @@ export function Clicker() {
                 className="cs-button w-full h-24 text-xl flex items-center justify-center gap-2 relative overflow-hidden transition-transform active:scale-95"
                 onClick={handleClick}
               >
-                <Sparkles className="w-6 h-6" />
+                {MemoizedSparklesLarge}
                 Click! (+{multiplier})
               </button>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  className={`cs-button ${
-                    count < Math.floor(multiplier * 100 * Math.pow(1.2, multiplier))
-                      ? 'opacity-50'
-                      : ''
-                  }`}
+                  className={`cs-button ${count < multiplierCost ? 'opacity-50' : ''}`}
                   onClick={buyMultiplier}
-                  disabled={
-                    count < Math.floor(multiplier * 100 * Math.pow(1.2, multiplier))
-                  }
+                  disabled={count < multiplierCost}
                 >
                   <div className="flex items-center gap-1">
                     <ArrowUp className="w-4 h-4" />
                     <span>Multiplier</span>
                   </div>
                   <span className="block text-sm">
-                    {formatCount(Math.floor(multiplier * 100 * Math.pow(1.2, multiplier)))}
+                    {formatCount(multiplierCost)}
                   </span>
                 </button>
 
                 <button
-                  className={`cs-button ${
-                    count <
-                    Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount))
-                      ? 'opacity-50'
-                      : ''
-                  }`}
+                  className={`cs-button ${count < autoClickerCost ? 'opacity-50' : ''}`}
                   onClick={buyAutoClicker}
-                  disabled={
-                    count <
-                    Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount))
-                  }
+                  disabled={count < autoClickerCost}
                 >
                   <div className="flex items-center gap-1">
                     <Zap className="w-4 h-4" />
                     <span>Auto-clicker</span>
                   </div>
                   <span className="block text-sm">
-                    {formatCount(
-                      Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount))
-                    )}
+                    {formatCount(autoClickerCost)}
                   </span>
                 </button>
 
                 <button
-                  className={`cs-button ${
-                    count <
-                    Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency))
-                      ? 'opacity-50'
-                      : ''
-                  }`}
+                  className={`cs-button ${count < autoClickerFrequencyCost ? 'opacity-50' : ''}`}
                   onClick={upgradeAutoClickerFrequency}
                   disabled={
-                    count <
-                      Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency)) ||
-                    autoClickerCount === 0
+                    count < autoClickerFrequencyCost || autoClickerCount === 0
                   }
                 >
                   <div className="flex items-center gap-1">
@@ -795,55 +832,35 @@ export function Clicker() {
                     <span>Auto CPS</span>
                   </div>
                   <span className="block text-sm">
-                    {formatCount(
-                      Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency))
-                    )}
+                    {formatCount(autoClickerFrequencyCost)}
                   </span>
                 </button>
 
                 <button
-                  className={`cs-button ${
-                    count < critChanceCost || critChanceMaxed ? 'opacity-50' : ''
-                  }`}
+                  className={`cs-button ${count < critChanceCost || criticalChance >= 0.5 ? 'opacity-50' : ''}`}
                   onClick={upgradeCriticalChance}
-                  disabled={count < critChanceCost || critChanceMaxed}
+                  disabled={count < critChanceCost || criticalChance >= 0.5}
                 >
                   <div className="flex items-center gap-1">
                     <Sparkles className="w-4 h-4" />
                     <span>Crit Chance</span>
                   </div>
                   <span className="block text-sm">
-                    {critChanceAlmostMaxed
-                      ? 'Sold Out'
-                      : formatCount(critChanceCost)}
+                    {criticalChance >= 0.45 ? 'Sold Out' : formatCount(critChanceCost)}
                   </span>
                 </button>
 
                 <button
-                  className={`cs-button ${
-                    count <
-                    Math.floor(
-                      criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5)
-                    )
-                      ? 'opacity-50'
-                      : ''
-                  }`}
+                  className={`cs-button ${count < critMultiplierCost ? 'opacity-50' : ''}`}
                   onClick={upgradeCriticalMultiplier}
-                  disabled={
-                    count <
-                    Math.floor(
-                      criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5)
-                    )
-                  }
+                  disabled={count < critMultiplierCost}
                 >
                   <div className="flex items-center gap-1">
                     <Zap className="w-4 h-4" />
                     <span>Crit Damage</span>
                   </div>
                   <span className="block text-sm">
-                    {formatCount(
-                      Math.floor(criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5))
-                    )}
+                    {formatCount(critMultiplierCost)}
                   </span>
                 </button>
 
@@ -864,7 +881,7 @@ export function Clicker() {
                 className="cs-button w-full flex items-center justify-center gap-2"
                 onClick={handleReset}
               >
-                <RotateCcw className="w-4 h-4" />
+                {MemoizedRotateCcw}
                 Reset & Save Score
               </button>
             </>
@@ -928,44 +945,7 @@ export function Clicker() {
         </div>
       </Window>
 
-      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Your Score</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Your Name</Label>
-              <Input
-                id="name"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name..."
-              />
-            </div>
-            <div className="text-center">
-              <p className={`text-lg ${prestigeColor}`}>
-                {prestige > 0 && <Crown className="w-4 h-4 inline mr-1" />}
-                Your Score: {formatCount(count)}
-              </p>
-              {prestige > 0 && (
-                <p className={`text-sm ${prestigeColor}`}>
-                  Prestige Level: {prestigeName}
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <button
-              className="cs-button"
-              onClick={handleSaveScore}
-              disabled={saveScoreMutation.isPending}
-            >
-              {saveScoreMutation.isPending ? 'Saving...' : 'Save Score'}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {saveDialog}
     </>
   );
-}
+});

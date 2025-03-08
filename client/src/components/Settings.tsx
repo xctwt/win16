@@ -3,13 +3,16 @@ import { Window } from './Windows';
 import { useTheme } from '@/lib/themeContext';
 import { useOneko } from '@/lib/onekoContext';
 import { Sun, Moon, Cat } from 'lucide-react';
+import { useMemo } from 'react';
 
 export function Settings() {
   const { theme, toggleTheme } = useTheme();
   const { isOnekoEnabled, toggleOneko } = useOneko();
 
+  const defaultPosition = useMemo(() => ({ x: 75, y: 505 }), []);
+
   return (
-    <Window title="settings" windowId="settings" defaultPosition={{ x: 75, y: 505 }}>
+    <Window title="settings" windowId="settings" defaultPosition={defaultPosition}>
       <div className="w-80 p-4 space-y-4">
         <div className="space-y-2">
           <div className="text-sm font-bold mb-2">Theme</div>

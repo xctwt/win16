@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Window } from './Windows';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Loader2, List, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +10,7 @@ interface Track {
   url: string;
 }
 
-export function MusicPlayer() {
+export const MusicPlayer = memo(function MusicPlayer() {
   const [currentSong, setCurrentSong] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
@@ -20,6 +20,17 @@ export function MusicPlayer() {
   const [showPlaylist, setShowPlaylist] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
+
+  const defaultWindowPosition = useMemo(() => ({ x: 75, y: 5 }), []);
+  
+  // Memoize icons to prevent unnecessary re-renders
+  const skipBackIcon = useMemo(() => <SkipBack className="w-4 h-4" />, []);
+  const skipForwardIcon = useMemo(() => <SkipForward className="w-4 h-4" />, []);
+  const pauseIcon = useMemo(() => <Pause className="w-4 h-4" />, []);
+  const playIcon = useMemo(() => <Play className="w-4 h-4" />, []);
+  const listIcon = useMemo(() => <List className="w-4 h-4" />, []);
+  const closeIcon = useMemo(() => <X className="w-4 h-4" />, []);
+  const volumeIcon = useMemo(() => <Volume2 className="w-4 h-4" />, []);
 
   const fetchTracks = async (): Promise<Track[]> => {
     const response = await fetch('/api/tracks');
@@ -67,7 +78,7 @@ export function MusicPlayer() {
         });
       }
     }
-  }, [currentSong, tracks, toast]);
+  }, [currentSong, tracks, toast, isPlaying]);
 
   useEffect(() => {
     if (tracks.length > 0 && currentSong < tracks.length) {
@@ -159,7 +170,7 @@ export function MusicPlayer() {
     : null;
 
   return (
-  <Window title="player" windowId="music" defaultPosition={{ x: 75, y: 5 }}>
+  <Window title="player" windowId="music" defaultPosition={defaultWindowPosition}>
       <div className="w-64 space-y-4 p-4">
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
@@ -190,11 +201,11 @@ export function MusicPlayer() {
                 {currentTrack?.artist} - {currentTrack?.title}
                 {currentTrack?.artist && currentTrack?.title && 
                   ((currentTrack.artist.length + currentTrack.title.length) * 8 > 256) && (
-                  <>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    {currentTrack.artist} - {currentTrack.title}
-                  </>
-                )}
+                    <>
+                      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                      {currentTrack.artist} - {currentTrack.title}
+                    </>
+                  )}
               </div>
             </div>
 
@@ -215,25 +226,25 @@ export function MusicPlayer() {
 
             <div className="flex justify-center space-x-4">
               <button className="cs-button" onClick={prevSong}>
-                <SkipBack className="w-4 h-4" />
+                {skipBackIcon}
               </button>
               <button className="cs-button" onClick={togglePlay}>
-                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isPlaying ? pauseIcon : playIcon}
               </button>
               <button className="cs-button" onClick={nextSong}>
-                <SkipForward className="w-4 h-4" />
+                {skipForwardIcon}
               </button>
               <button 
                 className={`cs-button ${showPlaylist ? 'border-cs-text' : ''}`} 
                 onClick={() => setShowPlaylist(!showPlaylist)}
               >
-                {showPlaylist ? <X className="w-4 h-4" /> : <List className="w-4 h-4" />}
+                {showPlaylist ? closeIcon : listIcon}
               </button>
             </div>
 
             {/* Volume control */}
             <div className="flex items-center space-x-2">
-              <Volume2 className="w-4 h-4" />
+              {volumeIcon}
               <input
                 type="range"
                 min="0"
@@ -277,4 +288,4 @@ export function MusicPlayer() {
       </div>
     </Window>
   );
-}
+});

@@ -1,3 +1,4 @@
+import MillionCompiler from "@million/lint";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
@@ -8,7 +9,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 export default defineConfig({
-  plugins: [react(), runtimeErrorOverlay(), themePlugin()],
+  plugins: [MillionCompiler.vite(), react(), runtimeErrorOverlay(), themePlugin()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client", "src"),

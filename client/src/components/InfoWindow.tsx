@@ -1,8 +1,11 @@
 import { Window } from './Windows';
+import { useMemo } from 'react';
 
 export function InfoWindow() {
+  const defaultPosition = useMemo(() => ({ x: 75, y: 105 }), []);
+
   return (
-    <Window title="readme" windowId="info" defaultPosition={{ x: 75, y: 105 }}>
+    <Window title="readme" windowId="info" defaultPosition={defaultPosition}>
       <div className="w-64 space-y-4">
         <div className="text-sm">
           <p className="mb-2">

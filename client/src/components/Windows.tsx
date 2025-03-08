@@ -1,5 +1,5 @@
 // components/Windows.tsx
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import Draggable from 'react-draggable';
 import { X } from 'lucide-react';
 import { useWindowState, WindowId } from '@/lib/windowContext';
@@ -11,7 +11,7 @@ interface WindowProps {
   windowId: WindowId;
 }
 
-export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, windowId }: WindowProps) {
+export const Window = memo(function Window({ title, children, defaultPosition = { x: 20, y: 20 }, windowId }: WindowProps) {
   const { closeWindow, focusWindow, windowStates } = useWindowState();
   const windowState = windowStates[windowId];
 
@@ -22,6 +22,8 @@ export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, wi
     e.stopPropagation();
     closeWindow(windowId);
   };
+
+  const memoizedX = useMemo(() => <X size={14} />, []);
 
   return (
     <Draggable 
@@ -43,7 +45,7 @@ export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, wi
             onTouchEnd={handleCloseClick}
             style={{ touchAction: 'manipulation' }}
           >
-            <X size={14} />
+            {memoizedX}
           </button>
         </div>
         <div className="cs-content">
@@ -52,4 +54,4 @@ export function Window({ title, children, defaultPosition = { x: 20, y: 20 }, wi
       </div>
     </Draggable>
   );
-}
+});

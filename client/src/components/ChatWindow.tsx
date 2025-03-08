@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Window } from './Windows';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -12,7 +12,7 @@ function generateDefaultNickname() {
   return `anonymous${generateRandomNumber()}`;
 }
 
-export function ChatWindow() {
+export const ChatWindow = memo(function ChatWindow() {
   const [message, setMessage] = useState('');
   const [nickname, setNickname] = useState(generateDefaultNickname());
   const [isRainbow, setIsRainbow] = useState(false);
@@ -101,7 +101,7 @@ export function ChatWindow() {
     }
   };
 
-  const getRainbowStyle = (index: number) => {
+  const getRainbowStyle = useCallback((index: number) => {
     if (!isRainbow) return {};
     const hue = (index * 30) % 360;
     return {
@@ -112,13 +112,15 @@ export function ChatWindow() {
       WebkitTextFillColor: 'transparent',
       padding: '2px 0',
     };
-  };
+  }, [isRainbow]);
 
   // Combine server messages with local system messages
-  const displayMessages = localMessages.map((msg) => ({
-    ...msg,
-    isSystem: msg.nickname === 'System',
-  }));
+  const displayMessages = useMemo(() => 
+    localMessages.map((msg) => ({
+      ...msg,
+      isSystem: msg.nickname === 'System',
+    }))
+  , [localMessages]);
 
   const formatTimestamp = (timestamp: string | Date) => {
     const date = new Date(timestamp);
@@ -128,8 +130,10 @@ export function ChatWindow() {
     });
   };
 
+  const defaultPosition = useMemo(() => ({ x: 75, y: 205 }), []);
+
   return (
-    <Window title="chat" windowId="chat" defaultPosition={{ x: 75, y: 205 }}>
+    <Window title="chat" windowId="chat" defaultPosition={defaultPosition}>
       <div className="w-80 h-64 flex flex-col">
         <div className="flex-1 overflow-auto mb-4">
           {displayMessages.map((msg, index) => (
@@ -172,4 +176,4 @@ export function ChatWindow() {
       </div>
     </Window>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { Window } from './Windows';
 import { Eraser, Paintbrush } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -39,7 +39,7 @@ const customColorfulStyles = `
   }
 `;
 
-export function Paint() {
+export const Paint = memo(function Paint() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawing, setHasDrawing] = useState(false);
@@ -55,11 +55,19 @@ export function Paint() {
   // Keep track of the currently used color
   const [lastDrawnColor, setLastDrawnColor] = useState<string | null>(null);
 
-  // Handle color change from colorful
-  const handleColorChange = (newColor: string) => {
+  // Memoize defaultPosition to prevent unstable object
+  const defaultPosition = useMemo(() => ({ x: 75, y: 305 }), []);
+
+  // Handle color change from colorful, memoized to prevent unstable function
+  const handleColorChange = useCallback((newColor: string) => {
     setColor(newColor);
     setTool('brush');
-  };
+  }, []);
+
+  // Memoize the input change handler
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    handleColorChange(e.target.value);
+  }, [handleColorChange]);
 
   // Add a color to recent colors list
   const addToRecentColors = (colorToAdd: string) => {
@@ -203,12 +211,63 @@ export function Paint() {
     }
   };
 
+  // Memoize HexColorPicker style to prevent unstable object
+  const hexColorPickerStyle = useMemo(() => ({
+    width: '180px',
+    height: '180px'
+  }), []);
+
+  // Memoize HexColorPicker component
+  const memoizedHexColorPicker = useMemo(() => (
+    <HexColorPicker 
+      color={color} 
+      onChange={handleColorChange}
+      style={hexColorPickerStyle}
+    />
+  ), [color, handleColorChange, hexColorPickerStyle]);
+
+  // Memoize Dialog component
+  const memoizedDialog = useMemo(() => (
+    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Save Drawing</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Drawing Name</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter drawing name..."
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="author">Author Name</Label>
+            <Input
+              id="author"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              placeholder="Enter author name..."
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <button className="cs-button" onClick={handleSave}>
+            Save
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  ), [showSaveDialog, name, author, handleSave]);
+
   return (
     <>
       {/* Add custom styles for react-colorful */}
       <style dangerouslySetInnerHTML={{ __html: customColorfulStyles }} />
       
-      <Window title="paint" windowId="paint" defaultPosition={{ x: 75, y: 305  }}>
+      <Window title="paint" windowId="paint" defaultPosition={defaultPosition}>
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             <button
@@ -259,14 +318,7 @@ export function Paint() {
             />
             
             <div className="flex-shrink-0 pt-1 space-y-3">
-              <HexColorPicker 
-                color={color} 
-                onChange={handleColorChange}
-                style={{ 
-                  width: '180px', 
-                  height: '180px'
-                }}
-              />
+              {memoizedHexColorPicker}
               <div>
                 <div className="text-xs mb-1 text-cs-text-secondary">Recent Colors</div>
                 <div className="grid grid-cols-8 gap-1">
@@ -285,7 +337,7 @@ export function Paint() {
                 <span className="text-xs text-cs-text-secondary">HEX:</span>
                 <Input
                   value={color}
-                  onChange={(e) => handleColorChange(e.target.value)}
+                  onChange={handleInputChange}
                   className="h-7 px-1 text-xs"
                 />
               </div>
@@ -301,38 +353,7 @@ export function Paint() {
         </div>
       </Window>
 
-      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Drawing</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Drawing Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter drawing name..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="author">Author Name</Label>
-              <Input
-                id="author"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder="Enter author name..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <button className="cs-button" onClick={handleSave}>
-              Save
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {memoizedDialog}
     </>
   );
-}
+});

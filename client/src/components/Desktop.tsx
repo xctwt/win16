@@ -1,8 +1,9 @@
 // components/Desktop.tsx
+import React, { memo } from 'react';
 import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Settings, Cookie } from 'lucide-react';
 import { useWindowState } from '@/lib/windowContext';
 
-export function Desktop() {
+export const Desktop = memo(function Desktop() {
   const { openWindow } = useWindowState();
 
   const icons = [
@@ -31,4 +32,4 @@ export function Desktop() {
       ))}
     </div>
   );
-}
+});
