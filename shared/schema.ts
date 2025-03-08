@@ -38,10 +38,30 @@ export interface Drawing {
   author: string;
   imageData: string; // Now stores the file path instead of base64
   timestamp: Date;
+  score: number; // Total score (upvotes - downvotes)
+  upvotes: number; // Number of upvotes
+  downvotes: number; // Number of downvotes
 }
 
 export interface InsertDrawing {
   name: string;
   author: string;
   image: string; // Still accepts base64 from client
+}
+
+// Interface for vote tracking to prevent abuse
+export interface VoteRecord {
+  drawingId: number;
+  ipAddress: string;
+  clientId: string; // Cookie-based identifier
+  timestamp: Date;
+  voteType: 'up' | 'down';
+}
+
+// Interface for vote request
+export interface VoteRequest {
+  drawingId: number;
+  voteType: 'up' | 'down';
+  clientId: string;
+  turnstileToken: string; // Cloudflare Turnstile token
 }

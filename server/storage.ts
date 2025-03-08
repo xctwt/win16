@@ -1,6 +1,6 @@
 import { writeFile, readdir, readFile, unlink } from 'fs/promises';
 import path from 'path';
-import { messages, drawings, type Message, type InsertMessage, type Drawing, type InsertDrawing } from "@shared/schema";
+import { messages, drawings, type Message, type InsertMessage, type Drawing, type InsertDrawing, type VoteRecord, type VoteRequest } from "@shared/schema";
 
 // Maximum number of messages to keep
 const MAX_MESSAGES = 69;
@@ -19,6 +19,8 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   getDrawings(): Promise<Drawing[]>;
   createDrawing(drawing: InsertDrawing): Promise<Drawing>;
+  voteDrawing(vote: VoteRequest, ipAddress: string): Promise<Drawing>;
+  getDrawingsSorted(sortBy: 'timestamp' | 'score'): Promise<Drawing[]>;
   cleanup(maxAge?: number): Promise<void>;
   saveMessagesToFile(): Promise<void>;
 }
@@ -26,18 +28,22 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private messages: Message[];
   private drawings: Drawing[];
+  private voteRecords: VoteRecord[];
   private messageId: number;
   private drawingId: number;
   private uploadsDir: string;
   private metadataFile: string;
+  private voteRecordsFile: string;
 
   constructor() {
     this.messages = [];
     this.drawings = [];
+    this.voteRecords = [];
     this.messageId = 1;
     this.drawingId = 1;
     this.uploadsDir = path.join(process.cwd(), 'uploads');
     this.metadataFile = path.join(this.uploadsDir, 'metadata.json');
+    this.voteRecordsFile = path.join(process.cwd(), 'data/vote-records.json');
     this.initStorage().catch(err => {
       console.error('Failed to initialize storage:', err);
     });
@@ -54,6 +60,14 @@ export class MemStorage implements IStorage {
         if (metadata && typeof metadata === 'object') {
           this.drawings = Array.isArray(metadata.drawings) ? metadata.drawings : [];
           this.drawingId = typeof metadata.lastDrawingId === 'number' ? metadata.lastDrawingId : 1;
+          
+          // Ensure all drawings have score properties
+          this.drawings = this.drawings.map(drawing => ({
+            ...drawing,
+            score: drawing.score || 0,
+            upvotes: drawing.upvotes || 0,
+            downvotes: drawing.downvotes || 0
+          }));
         } else {
           this.drawings = [];
           this.drawingId = 1;
@@ -62,6 +76,18 @@ export class MemStorage implements IStorage {
         // If file doesn't exist or is invalid, start fresh
         this.drawings = [];
         this.drawingId = 1;
+      }
+
+      // Load vote records if they exist
+      try {
+        const voteData = await readFile(this.voteRecordsFile, 'utf-8');
+        this.voteRecords = JSON.parse(voteData);
+        if (!Array.isArray(this.voteRecords)) {
+          this.voteRecords = [];
+        }
+      } catch (error) {
+        // If file doesn't exist or is invalid, start fresh
+        this.voteRecords = [];
       }
 
       // Verify all files exist and clean up missing ones
@@ -83,6 +109,7 @@ export class MemStorage implements IStorage {
       // Initialize with empty state to prevent further errors
       this.drawings = [];
       this.drawingId = 1;
+      this.voteRecords = [];
     }
   }
 
@@ -163,6 +190,22 @@ export class MemStorage implements IStorage {
     }
   }
 
+  private async saveVoteRecords(): Promise<void> {
+    try {
+      // Ensure data directory exists
+      await writeFile(path.join(process.cwd(), 'data', '.gitkeep'), '', { flag: 'a' });
+      
+      await writeFile(
+        this.voteRecordsFile,
+        JSON.stringify(this.voteRecords, null, 2),
+        'utf-8'
+      );
+    } catch (error) {
+      console.error('Error saving vote records:', error);
+      throw new Error('Failed to save vote records');
+    }
+  }
+
   async getMessages(): Promise<Message[]> {
     return this.messages.slice(-MAX_MESSAGES);
   }
@@ -216,6 +259,9 @@ export class MemStorage implements IStorage {
         author: insertDrawing.author || 'Anonymous',
         imageData: `/uploads/${fileName}`,
         timestamp: new Date(),
+        score: 0,
+        upvotes: 0,
+        downvotes: 0
       };
       
       this.drawings.push(drawing);
@@ -224,6 +270,77 @@ export class MemStorage implements IStorage {
     } catch (error) {
       console.error('Error creating drawing:', error);
       throw new Error('Failed to create drawing');
+    }
+  }
+
+  async voteDrawing(vote: VoteRequest, ipAddress: string): Promise<Drawing> {
+    // Find the drawing
+    const drawing = this.drawings.find(d => d.id === vote.drawingId);
+    if (!drawing) {
+      throw new Error('Drawing not found');
+    }
+
+    // Check if this IP + clientId has already voted on this drawing
+    const existingVote = this.voteRecords.find(
+      record => 
+        record.drawingId === vote.drawingId && 
+        (record.ipAddress === ipAddress || record.clientId === vote.clientId)
+    );
+
+    if (existingVote) {
+      // If they're trying to vote the same way again, ignore
+      if (existingVote.voteType === vote.voteType) {
+        return drawing;
+      }
+      
+      // They're changing their vote
+      existingVote.voteType = vote.voteType;
+      existingVote.timestamp = new Date();
+      
+      // Update the drawing's score
+      if (vote.voteType === 'up') {
+        drawing.upvotes++;
+        drawing.downvotes--;
+      } else {
+        drawing.upvotes--;
+        drawing.downvotes++;
+      }
+    } else {
+      // New vote
+      this.voteRecords.push({
+        drawingId: vote.drawingId,
+        ipAddress,
+        clientId: vote.clientId,
+        timestamp: new Date(),
+        voteType: vote.voteType
+      });
+      
+      // Update the drawing's score
+      if (vote.voteType === 'up') {
+        drawing.upvotes++;
+      } else {
+        drawing.downvotes++;
+      }
+    }
+    
+    // Recalculate total score
+    drawing.score = drawing.upvotes - drawing.downvotes;
+    
+    // Save changes
+    await this.saveMetadata();
+    await this.saveVoteRecords();
+    
+    return drawing;
+  }
+
+  async getDrawingsSorted(sortBy: 'timestamp' | 'score' = 'timestamp'): Promise<Drawing[]> {
+    if (sortBy === 'score') {
+      return [...this.drawings].sort((a, b) => b.score - a.score);
+    } else {
+      // Default sort by timestamp (oldest first)
+      return [...this.drawings].sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
     }
   }
 
