@@ -426,6 +426,50 @@ export function Clicker() {
       return;
     }
 
+    // Check if score is too large to be safely handled by JavaScript
+    const MAX_SAFE_SCORE = Number.MAX_SAFE_INTEGER; // 9007199254740991
+    if (count > MAX_SAFE_SCORE) {
+      toast({
+        title: 'Score too large',
+        description: `Your score (${formatCount(count)}) exceeds the maximum allowed value. The score will be capped at ${formatCount(MAX_SAFE_SCORE)}.`,
+        variant: 'destructive',
+      });
+      // Cap the score at MAX_SAFE_SCORE
+      const cappedScore = MAX_SAFE_SCORE;
+      
+      const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
+      const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
+
+      // Generate current timestamp
+      const timestamp = Date.now();
+
+      // Generate a token that includes the capped score
+      const tokenData = generateVerificationToken(timestamp, cappedScore);
+
+      // Hash the token data
+      const token = hashString(tokenData);
+
+      // Create the submission data with verification and capped score
+      const submissionData = {
+        name: playerName,
+        score: cappedScore,
+        prestige: prestige,
+        color: prestigeColor,
+        timestamp: timestamp,
+        token: token,
+      };
+
+      try {
+        await saveScoreMutation.mutateAsync(submissionData);
+        // Reset game state only after successful save
+        resetGame();
+      } catch (error) {
+        // saveScoreMutation handles the error toast
+        console.error('Error during save:', error);
+      }
+      return;
+    }
+
     const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
     const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
 
@@ -459,7 +503,19 @@ export function Clicker() {
     }
   };
 
-  const formatCount = (num: number): string => {
+  const formatCount = (num: number | null | undefined): string => {
+    // Handle null or undefined values
+    if (num === null || num === undefined) {
+      console.warn('Attempted to format null or undefined number');
+      return '0';
+    }
+    
+    // Handle NaN
+    if (isNaN(num)) {
+      console.warn('Attempted to format NaN');
+      return '0';
+    }
+    
     if (num > 99000000) {
       return num.toExponential(2);
     }
@@ -735,10 +791,14 @@ export function Clicker() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <div className={`font-bold ${getScoreColorClass(score.color)}`}>
-                          {formatCount(score.score)}
+                          {score && score.score !== undefined && score.score !== null 
+                            ? formatCount(score.score) 
+                            : '0'}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {new Date(score.date).toLocaleDateString()}
+                          {score && score.date 
+                            ? new Date(score.date).toLocaleDateString() 
+                            : 'Unknown date'}
                         </div>
                       </div>
                     </div>

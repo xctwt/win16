@@ -204,17 +204,42 @@ router.get('/scores', async (req, res) => {
       return res.json(scores);
     }
 
-    // Filter out null scores
-    scores = scores.filter((score) => score !== null);
+    // Enhanced filtering to remove invalid scores
+    scores = scores.filter((score) => {
+      // Filter out null score entries
+      if (score === null || score === undefined) {
+        console.warn('Found null/undefined score entry, filtering it out');
+        return false;
+      }
+      
+      // Make sure score is an object
+      if (typeof score !== 'object') {
+        console.warn('Found non-object score entry, filtering it out:', score);
+        return false;
+      }
+      
+      // Filter out scores with invalid score values
+      if (score.score === null || score.score === undefined || typeof score.score !== 'number' || isNaN(score.score)) {
+        console.warn('Found invalid score value, filtering it out:', score);
+        return false;
+      }
+      
+      return true;
+    });
 
     // Group scores by name and keep only the highest score for each player
     const highestScores: { [name: string]: Score } = {};
     scores.forEach((score) => {
-      if (
-        !highestScores[score.name] ||
-        score.score > highestScores[score.name].score
-      ) {
-        highestScores[score.name] = score;
+      try {
+        if (
+          !highestScores[score.name] ||
+          score.score > highestScores[score.name].score
+        ) {
+          highestScores[score.name] = score;
+        }
+      } catch (error) {
+        console.error('Error processing score:', score, error);
+        // Skip this score if there's an error
       }
     });
 
@@ -223,15 +248,32 @@ router.get('/scores', async (req, res) => {
 
     // Sort by prestige first (higher first), then by score (higher first)
     scores.sort((a, b) => {
-      // First sort by prestige
-      const prestigeDiff = (b.prestige || 0) - (a.prestige || 0);
-      if (prestigeDiff !== 0) return prestigeDiff;
+      try {
+        // First sort by prestige
+        const prestigeDiff = (b.prestige || 0) - (a.prestige || 0);
+        if (prestigeDiff !== 0) return prestigeDiff;
 
-      // Then sort by score
-      return b.score - a.score;
+        // Then sort by score
+        return b.score - a.score;
+      } catch (error) {
+        console.error('Error sorting scores:', a, b, error);
+        return 0; // Keep original order if there's an error
+      }
     });
 
-    res.json(scores);
+    // Final validation to ensure no null scores are sent to the client
+    const validatedScores = scores.map(score => {
+      // Create a new object with validated properties
+      return {
+        name: score.name || 'Unknown',
+        score: typeof score.score === 'number' ? score.score : 0,
+        date: score.date || new Date().toISOString(),
+        prestige: typeof score.prestige === 'number' ? score.prestige : 0,
+        color: score.color || 'theme-adaptive'
+      };
+    });
+
+    res.json(validatedScores);
   } catch (error) {
     console.error('Error reading scores:', error);
     res.status(500).json({ error: 'Failed to read scores' });
@@ -288,10 +330,28 @@ router.post('/scores', checkRateLimit, async (req, res) => {
     // Log the received score data for debugging
     console.log('Received score data:', { name, score, prestige, color, timestamp, token });
 
-    // Basic validation
-    if (!name || typeof name !== 'string' || typeof score !== 'number') {
-      console.warn('Invalid score data received. Name:', name, 'Score:', score);
-      return res.status(400).json({ error: 'Invalid score data' });
+    // Enhanced validation for score
+    if (!name || typeof name !== 'string') {
+      console.warn('Invalid name received:', name);
+      return res.status(400).json({ error: 'Invalid name' });
+    }
+    
+    // Check if score is valid - must be a number and not null/undefined/NaN
+    if (score === null || score === undefined || typeof score !== 'number' || isNaN(score)) {
+      console.warn('Invalid score received:', score);
+      return res.status(400).json({ error: 'Invalid score value' });
+    }
+    
+    // Limit maximum score value to prevent issues with extremely large numbers
+    // Using Number.MAX_SAFE_INTEGER (9007199254740991) as the upper limit
+    const MAX_ALLOWED_SCORE = Number.MAX_SAFE_INTEGER;
+    
+    if (score > MAX_ALLOWED_SCORE) {
+      console.warn('Score exceeds maximum allowed value:', score);
+      return res.status(400).json({ 
+        error: 'Score exceeds maximum allowed value',
+        maxAllowed: MAX_ALLOWED_SCORE
+      });
     }
 
     // Verify the submission if token and timestamp are provided
