@@ -26,7 +26,7 @@ const Windows = memo(function Windows() {
   );
 });
 
-const IDLE_TIME = 2 * 60 * 1000; // 2 minutes in milliseconds
+const IDLE_TIME = 1000; // 1 second for testing (was 2 * 60 * 1000)
 
 export default function Home() {
   const [showScreensaver, setShowScreensaver] = useState(false);

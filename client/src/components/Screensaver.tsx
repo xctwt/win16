@@ -1,41 +1,21 @@
-import { useEffect, useState } from "react";
-import { useWindowState } from "@/lib/windowContext";
+import { useScreensaver } from "@/lib/screensaverContext";
+import { ClockScreensaver } from "./screensavers/ClockScreensaver";
+import { RainScreensaver } from "./screensavers/RainScreensaver";
+import { StarfieldScreensaver } from "./screensavers/StarfieldScreensaver";
 
 export function Screensaver({ onActivity }: { onActivity: () => void }) {
-  const [time, setTime] = useState(new Date());
-  const { windowStates } = useWindowState();
+  const { screensaver } = useScreensaver();
 
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleActivity = () => {
-    onActivity();
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 cursor-none"
-      style={{ backgroundColor: "var(--cs-bg)" }}
-      onClick={handleActivity}
-      onMouseMove={handleActivity}
-      onTouchStart={handleActivity}
-    >
-      <div
-        className="absolute font-mono"
-        style={{
-          right: "20px",
-          bottom: "20px",
-          color: "var(--cs-text)",
-        }}
-      >
-        <div className="text-4xl">{time.toLocaleTimeString()}</div>
-        <div className="text-sm opacity-70">Move mouse or touch screen to exit</div>
-      </div>
-    </div>
-  );
+  // Render the selected screensaver
+  switch (screensaver) {
+    case 'rain':
+      return <RainScreensaver onActivity={onActivity} />;
+    case 'starfield':
+      return <StarfieldScreensaver onActivity={onActivity} />;
+    case 'none':
+      return null;
+    case 'clock':
+    default:
+      return <ClockScreensaver onActivity={onActivity} />;
+  }
 }
