@@ -23,6 +23,14 @@
   --desktop-icon-bg: rgba(255, 255, 255, 0.3);
 }
 
+/* Ensure html and body have the same background color as the app */
+html, body {
+  background-color: var(--cs-bg);
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease;
+}
+
 /* Button Styles */
 .cs-button {
   background: var(--cs-window);
