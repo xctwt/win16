@@ -2,7 +2,7 @@ import { Window } from './Windows';
 
 export function InfoWindow() {
   return (
-    <Window title="readme" windowId="info" defaultPosition={{ x: 300, y: 20 }}>
+    <Window title="readme" windowId="info" defaultPosition={{ x: 75, y: 105 }}>
       <div className="w-64 space-y-4">
         <div className="text-sm">
           <p className="mb-2">

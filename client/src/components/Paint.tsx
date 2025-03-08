@@ -208,7 +208,7 @@ export function Paint() {
       {/* Add custom styles for react-colorful */}
       <style dangerouslySetInnerHTML={{ __html: customColorfulStyles }} />
       
-      <Window title="paint" windowId="paint" defaultPosition={{ x: 400, y: 100 }}>
+      <Window title="paint" windowId="paint" defaultPosition={{ x: 75, y: 305  }}>
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             <button

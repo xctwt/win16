@@ -129,7 +129,7 @@ export function ChatWindow() {
   };
 
   return (
-    <Window title="chat" windowId="chat" defaultPosition={{ x: 20, y: 300 }}>
+    <Window title="chat" windowId="chat" defaultPosition={{ x: 75, y: 205 }}>
       <div className="w-80 h-64 flex flex-col">
         <div className="flex-1 overflow-auto mb-4">
           {displayMessages.map((msg, index) => (

@@ -15,7 +15,7 @@ export function DrawingsViewer() {
   };
 
   return (
-    <Window title="drawings" windowId="drawings" defaultPosition={{ x: 500, y: 100 }}>
+    <Window title="drawings" windowId="drawings" defaultPosition={{ x: 75, y: 405 }}>
       <div className="w-80 space-y-2">
         {/* Header with refresh button */}
         <div className="flex justify-between items-center px-2">

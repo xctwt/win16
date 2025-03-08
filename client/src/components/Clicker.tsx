@@ -41,6 +41,15 @@ type Score = {
   color?: string;
 };
 
+// Define a type for click animations
+type ClickAnimationData = {
+  id: number;
+  value: number;
+  x: number;
+  y: number;
+  isCritical: boolean;
+};
+
 // Prestige levels and their colors
 const PRESTIGE_LEVELS = [
   { name: 'None', color: 'text-foreground' },
@@ -54,28 +63,67 @@ const PRESTIGE_LEVELS = [
 ];
 
 // Animation for click effects
-function ClickAnimation({ value, x, y }: { value: number; x: number; y: number }) {
+function ClickAnimation({ value, x, y, isCritical = false }: { value: number; x: number; y: number; isCritical?: boolean }) {
   const [opacity, setOpacity] = useState(1);
   const [posY, setPosY] = useState(y);
   const [posX, setPosX] = useState(x);
   const [scale, setScale] = useState(1);
+  
+  // Generate random values for this specific animation instance
+  const randomFactors = useRef({
+    xSpeed: Math.random() * 2 - 1,  // Random value between -1 and 1
+    ySpeed: -(Math.random() * 0.5 + 0.5),  // Random upward speed
+    wobble: Math.random() * 6 + 2,  // Random wobble frequency
+    wobbleAmount: Math.random() * 15 + 5,  // Random wobble amount
+    path: Math.floor(Math.random() * 3)  // Random path type (0, 1, or 2)
+  });
 
   useEffect(() => {
-    // Faster animation for better feedback
-    const timer = setInterval(() => {
-      setOpacity((prev) => prev - 0.08);
-      setPosY((prev) => prev - 3);
-      // Add a slight random horizontal movement
-      setPosX((prev) => prev + (Math.random() * 3 - 1.5));
-      setScale((prev) => prev + 0.03); // Grow slightly as it rises
-    }, 30);
-
-    return () => clearInterval(timer);
-  }, []);
+    // Use requestAnimationFrame for smoother animation
+    let animationFrameId: number;
+    let startTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      // Complete animation in 800ms
+      const progress = Math.min(elapsed / 800, 1);
+      
+      setOpacity(1 - progress);
+      
+      // Apply different movement patterns based on random path type
+      const { xSpeed, ySpeed, wobble, wobbleAmount, path } = randomFactors.current;
+      
+      // Base vertical movement (always goes up)
+      const baseYMovement = y + (ySpeed * progress * 100);
+      
+      // Different horizontal movement patterns
+      let newX;
+      if (path === 0) {
+        // Zigzag pattern
+        newX = x + (Math.sin(progress * wobble) * wobbleAmount);
+      } else if (path === 1) {
+        // Curved path
+        newX = x + (xSpeed * progress * 40);
+      } else {
+        // Spiral-like
+        newX = x + (Math.sin(progress * wobble) * wobbleAmount * (1 - progress));
+      }
+      
+      setPosY(baseYMovement);
+      setPosX(newX);
+      setScale(1 + progress * 0.5); // Grow slightly as it rises
+      
+      if (progress < 1) {
+        animationFrameId = requestAnimationFrame(animate);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+    
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [x, y]);
 
   if (opacity <= 0) return null;
-
-  const isCritical = value > 10;
 
   return (
     <div
@@ -109,10 +157,7 @@ export function Clicker() {
   const [prestige, setPrestige] = useState(0);
   const [criticalChance, setCriticalChance] = useState(0.05); // 5% base chance
   const [criticalMultiplier, setCriticalMultiplier] = useState(5); // 5x base critical multiplier
-  const [clickAnimations, setClickAnimations] = useState<
-    Array<{ id: number; value: number; x: number; y: number }>
-  >([]);
-  const [nextAnimationId, setNextAnimationId] = useState(0);
+  const [clickAnimations, setClickAnimations] = useState<ClickAnimationData[]>([]);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const { toast } = useToast();
@@ -226,8 +271,16 @@ export function Clicker() {
   useEffect(() => {
     if (clickAnimations.length > 0) {
       const timer = setTimeout(() => {
-        setClickAnimations((prev) => prev.slice(1));
-      }, 1000);
+        // Remove all animations that are older than 1 second
+        const now = Date.now();
+        setClickAnimations((prev) => 
+          prev.filter(anim => {
+            // Extract timestamp from the ID (we're using Date.now() + Math.random() for IDs)
+            const animTimestamp = Math.floor(anim.id);
+            return now - animTimestamp < 1000;
+          })
+        );
+      }, 100); // Check more frequently
       return () => clearTimeout(timer);
     }
   }, [clickAnimations]);
@@ -258,33 +311,94 @@ export function Clicker() {
       y = window.innerHeight / 2;
     }
 
-    // Add multiple animations for critical hits
-    if (isCritical) {
-      // Add 3-5 particles for critical hits
-      const particleCount = 3 + Math.floor(Math.random() * 3);
-      for (let i = 0; i < particleCount; i++) {
-        // Add some random offset to each particle
-        const offsetX = Math.random() * 40 - 20;
-        const offsetY = Math.random() * 20 - 10;
+    // Generate a truly unique ID for each animation
+    const baseId = Date.now() + Math.random();
 
-        setClickAnimations((prev) => [
-          ...prev,
-          {
-            id: nextAnimationId + i,
-            value: i === 0 ? clickValue : Math.floor(clickValue / particleCount),
+    // Create animations based on hit type
+    if (isCritical) {
+      // For small critical hits (< 10), just show one big number
+      if (clickValue < 10) {
+        setClickAnimations((prev) => [...prev, {
+          id: baseId + Math.random(),
+          value: clickValue,
+          x: x,
+          y: y,
+          isCritical: true
+        }]);
+      } else {
+        // For larger critical hits, show multiple particles
+        const baseParticleCount = 3;
+        const maxExtraParticles = Math.min(4, Math.floor(Math.log10(clickValue)));
+        const particleCount = baseParticleCount + maxExtraParticles;
+        
+        const newAnimations: ClickAnimationData[] = [];
+        
+        // Always show the main value in the first particle
+        newAnimations.push({
+          id: baseId + Math.random(),
+          value: clickValue,
+          x: x,
+          y: y,
+          isCritical: true
+        });
+        
+        // For secondary particles, ensure they show meaningful values
+        for (let i = 1; i < particleCount; i++) {
+          // Add more random offset for a true popcorn effect
+          const offsetX = Math.random() * 60 - 30;
+          const offsetY = Math.random() * 40 - 20;
+          
+          // For critical hits, secondary particles should show at least 25% of the main value
+          // This ensures even small crits (like 5) won't show tiny numbers
+          const minValue = Math.max(2, Math.floor(clickValue * 0.25));
+          const maxValue = Math.floor(clickValue * 0.75);
+          const particleValue = Math.floor(Math.random() * (maxValue - minValue + 1) + minValue);
+          
+          newAnimations.push({
+            id: baseId + i + Math.random(),
+            value: particleValue,
             x: x + offsetX,
             y: y + offsetY,
-          },
-        ]);
+            isCritical: true
+          });
+        }
+        
+        setClickAnimations((prev) => [...prev, ...newAnimations]);
       }
-      setNextAnimationId((prev) => prev + particleCount);
     } else {
-      // Just one animation for normal clicks
-      setClickAnimations((prev) => [
-        ...prev,
-        { id: nextAnimationId, value: clickValue, x, y },
-      ]);
-      setNextAnimationId((prev) => prev + 1);
+      // For non-critical hits, add 1-3 particles based on multiplier size
+      const particleCount = multiplier > 100 ? 3 : multiplier > 10 ? 2 : 1;
+      const newAnimations: ClickAnimationData[] = [];
+      
+      // For regular hits, just show the actual value
+      newAnimations.push({
+        id: baseId + Math.random(),
+        value: clickValue,
+        x: x,
+        y: y,
+        isCritical: false
+      });
+
+      // Add smaller secondary particles only for larger hits
+      if (clickValue > 10) {
+        for (let i = 1; i < particleCount; i++) {
+          const offsetX = Math.random() * 30 - 15;
+          const offsetY = Math.random() * 20 - 10;
+          
+          // For non-critical secondary particles, show 33-66% of the main value
+          const particleValue = Math.floor(clickValue * (0.33 + Math.random() * 0.33));
+          
+          newAnimations.push({
+            id: baseId + i + Math.random(),
+            value: particleValue,
+            x: x + offsetX,
+            y: y + offsetY,
+            isCritical: false
+          });
+        }
+      }
+      
+      setClickAnimations((prev) => [...prev, ...newAnimations]);
     }
   };
 
@@ -552,15 +666,15 @@ export function Clicker() {
         className="fixed inset-0 pointer-events-none overflow-hidden"
         style={{ zIndex: 10000 }}
       >
-        {clickAnimations.map((anim) => (
-          <ClickAnimation key={anim.id} value={anim.value} x={anim.x} y={anim.y} />
+        {clickAnimations.map((anim: ClickAnimationData) => (
+          <ClickAnimation key={anim.id} value={anim.value} x={anim.x} y={anim.y} isCritical={anim.isCritical} />
         ))}
       </div>
 
       <Window
         title="clicker - season 2"
         windowId="clicker"
-        defaultPosition={{ x: 300, y: 200 }}
+        defaultPosition={{ x: 75, y: 130 }}
       >
         <div className="space-y-4 p-4" style={{ width: '300px' }}>
           <div className="flex gap-2 mb-4">

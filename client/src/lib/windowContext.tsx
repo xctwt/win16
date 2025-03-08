@@ -8,8 +8,15 @@ interface WindowStateItem {
   zIndex: number;
 }
 
-interface WindowState {
-  [K in WindowId]: WindowStateItem;
+// Update the WindowState interface to be more explicit
+export interface WindowState {
+  music: WindowStateItem;
+  info: WindowStateItem;
+  chat: WindowStateItem;
+  paint: WindowStateItem;
+  drawings: WindowStateItem;
+  clicker: WindowStateItem;
+  settings: WindowStateItem;
 }
 
 interface WindowContextType {
@@ -22,9 +29,8 @@ interface WindowContextType {
 }
 
 const WindowContext = createContext<WindowContextType | undefined>(undefined);
-
 const initialWindowStates: WindowState = {
-  music: { isOpen: true, zIndex: 1 },
+  music: { isOpen: false, zIndex: 1 },
   info: { isOpen: false, zIndex: 0 },
   chat: { isOpen: false, zIndex: 2 },
   paint: { isOpen: false, zIndex: 0 },

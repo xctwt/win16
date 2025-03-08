@@ -9,7 +9,7 @@ export function Settings() {
   const { isOnekoEnabled, toggleOneko } = useOneko();
 
   return (
-    <Window title="settings" windowId="settings" defaultPosition={{ x: 200, y: 200 }}>
+    <Window title="settings" windowId="settings" defaultPosition={{ x: 75, y: 505 }}>
       <div className="w-80 p-4 space-y-4">
         <div className="space-y-2">
           <div className="text-sm font-bold mb-2">Theme</div>
