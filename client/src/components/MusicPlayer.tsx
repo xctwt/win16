@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo } from 'react';
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { Window } from './Windows';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Loader2, List, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -18,10 +18,13 @@ export const MusicPlayer = memo(function MusicPlayer() {
   const [duration, setDuration] = useState(0);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [showPlaylist, setShowPlaylist] = useState(false);
+  const [hoverTime, setHoverTime] = useState<number | null>(null);
+  const [hoverPosition, setHoverPosition] = useState<number | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const defaultWindowPosition = useMemo(() => ({ x: 75, y: 5 }), []);
+  const defaultWindowPosition = useMemo(() => ({ x: 95, y: 21 }), []);
   
   // Memoize icons to prevent unnecessary re-renders
   const skipBackIcon = useMemo(() => <SkipBack className="w-4 h-4" />, []);
@@ -63,9 +66,14 @@ export const MusicPlayer = memo(function MusicPlayer() {
     }
   }, [volume]);
 
+  // Handle audio loading and playback when track changes
   useEffect(() => {
     if (audioRef.current && tracks.length > 0) {
+      // Load the new track
       audioRef.current.load();
+      // Reset time when changing tracks
+      setCurrentTime(0);
+      
       if (isPlaying) {
         audioRef.current.play().catch(error => {
           console.error('Error playing audio:', error);
@@ -78,7 +86,22 @@ export const MusicPlayer = memo(function MusicPlayer() {
         });
       }
     }
-  }, [currentSong, tracks, toast, isPlaying]);
+  }, [currentSong, tracks, toast]);
+
+  // Handle play/pause state changes without reloading the audio
+  useEffect(() => {
+    if (audioRef.current && tracks.length > 0 && isPlaying) {
+      audioRef.current.play().catch(error => {
+        console.error('Error playing audio:', error);
+        toast({
+          title: 'Error playing audio',
+          description: `Could not play ${tracks[currentSong]?.title}`,
+          variant: 'destructive'
+        });
+        setIsPlaying(false);
+      });
+    }
+  }, [isPlaying, tracks, currentSong, toast]);
 
   useEffect(() => {
     if (tracks.length > 0 && currentSong < tracks.length) {
@@ -111,16 +134,8 @@ export const MusicPlayer = memo(function MusicPlayer() {
         audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        audioRef.current.play().catch(error => {
-          console.error('Error playing audio:', error);
-          if (tracks.length > 0 && currentSong < tracks.length) {
-            toast({
-              title: 'Error playing audio',
-              description: `Could not play ${tracks[currentSong]?.title}`,
-              variant: 'destructive'
-            });
-          }
-        });
+        // When resuming, ensure we're at the correct position
+        audioRef.current.currentTime = currentTime;
         setIsPlaying(true);
       }
     }
@@ -140,8 +155,20 @@ export const MusicPlayer = memo(function MusicPlayer() {
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-      setDuration(audioRef.current.duration || 0);
+      const newTime = audioRef.current.currentTime;
+      const newDuration = audioRef.current.duration || 0;
+      
+      setCurrentTime(newTime);
+      setDuration(newDuration);
+      
+      // Update Media Session position state
+      if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+        navigator.mediaSession.setPositionState({
+          duration: newDuration,
+          playbackRate: audioRef.current.playbackRate,
+          position: newTime
+        });
+      }
     }
   };
 
@@ -168,6 +195,87 @@ export const MusicPlayer = memo(function MusicPlayer() {
   const currentTrack = tracks.length > 0 && currentSong < tracks.length 
     ? tracks[currentSong] 
     : null;
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (audioRef.current && duration) {
+      const progressBar = e.currentTarget;
+      const rect = progressBar.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left;
+      const newTime = (offsetX / rect.width) * duration;
+      
+      // Update audio time
+      audioRef.current.currentTime = newTime;
+      setCurrentTime(newTime);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (progressBarRef.current && duration) {
+      const rect = progressBarRef.current.getBoundingClientRect();
+      const offsetX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+      const percentage = offsetX / rect.width;
+      const previewTime = percentage * duration;
+      
+      setHoverTime(previewTime);
+      setHoverPosition(offsetX);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverTime(null);
+    setHoverPosition(null);
+  };
+
+  // Set up Media Session API for media controls
+  useEffect(() => {
+    if ('mediaSession' in navigator && currentTrack) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        // Add artwork if available in the future
+      });
+
+      // Define action handlers
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (!isPlaying) togglePlay();
+      });
+      
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (isPlaying) togglePlay();
+      });
+      
+      navigator.mediaSession.setActionHandler('previoustrack', prevSong);
+      navigator.mediaSession.setActionHandler('nexttrack', nextSong);
+      
+      // Add seek handlers
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (audioRef.current && details.seekTime !== undefined) {
+          audioRef.current.currentTime = details.seekTime;
+          setCurrentTime(details.seekTime);
+        }
+      });
+      
+      // Update position state
+      if ('setPositionState' in navigator.mediaSession) {
+        navigator.mediaSession.setPositionState({
+          duration: duration || 0,
+          playbackRate: audioRef.current?.playbackRate || 1,
+          position: currentTime || 0
+        });
+      }
+    }
+    
+    return () => {
+      if ('mediaSession' in navigator) {
+        // Clear handlers when component unmounts
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+      }
+    };
+  }, [currentTrack, isPlaying, duration, currentTime, togglePlay, prevSong, nextSong]);
 
   return (
   <Window title="player" windowId="music" defaultPosition={defaultWindowPosition}>
@@ -210,12 +318,41 @@ export const MusicPlayer = memo(function MusicPlayer() {
             </div>
 
             {/* Progress bar */}
-            <div className="space-y-2">
-              <div className="progress-bar">
+            <div className="space-y-2 relative">
+              <div 
+                ref={progressBarRef}
+                className="progress-bar cursor-pointer relative"
+                onClick={handleSeek}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+              >
                 <div 
                   className="progress-bar-fill"
                   style={{ width: `${(currentTime / (duration || 1)) * 100 || 0}%` }}
                 />
+                {hoverTime !== null && hoverPosition !== null && (
+                  <>
+                    {/* Hover position indicator */}
+                    <div 
+                      className="absolute top-0 bottom-0 w-0.5 bg-white"
+                      style={{ 
+                        left: `${hoverPosition}px`, 
+                        transform: 'translateX(-50%)',
+                        opacity: 0.8
+                      }}
+                    />
+                    {/* Hover time tooltip */}
+                    <div 
+                      className="absolute bottom-full mb-1 px-1 py-0.5 bg-black text-white text-xs rounded"
+                      style={{ 
+                        left: `${hoverPosition}px`, 
+                        transform: 'translateX(-50%)'
+                      }}
+                    >
+                      {formatTime(hoverTime)}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="flex justify-between text-xs">
                 <span>{formatTime(currentTime)}</span>

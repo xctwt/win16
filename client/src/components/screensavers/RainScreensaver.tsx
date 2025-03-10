@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/themeContext";
 import { useScreensaver } from "@/lib/screensaverContext";
+import { MouseEvent, TouchEvent } from "react";
 
 interface Spark {
   x: number;
@@ -12,7 +13,7 @@ interface Spark {
   go: () => void;
 }
 
-export function RainScreensaver({ onActivity }: { onActivity: () => void }) {
+export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
   const { clockPosition } = useScreensaver();
@@ -25,6 +26,14 @@ export function RainScreensaver({ onActivity }: { onActivity: () => void }) {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleMouseActivity = (e: MouseEvent) => {
+    onActivity(e.nativeEvent);
+  };
+
+  const handleTouchActivity = (e: TouchEvent) => {
+    onActivity(e.nativeEvent);
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -146,10 +155,6 @@ export function RainScreensaver({ onActivity }: { onActivity: () => void }) {
     };
   }, [theme]);
 
-  const handleActivity = () => {
-    onActivity();
-  };
-
   // Clock position styles
   const getClockStyles = () => {
     if (clockPosition === 'center') {
@@ -171,9 +176,9 @@ export function RainScreensaver({ onActivity }: { onActivity: () => void }) {
   return (
     <div
       className="fixed inset-0 z-50 cursor-none"
-      onClick={handleActivity}
-      onMouseMove={handleActivity}
-      onTouchStart={handleActivity}
+      onClick={handleMouseActivity}
+      onMouseMove={handleMouseActivity}
+      onTouchStart={handleTouchActivity}
     >
       <canvas ref={canvasRef} className="w-full h-full" />
       
@@ -204,7 +209,7 @@ export function RainScreensaver({ onActivity }: { onActivity: () => void }) {
           color: theme === 'dark' ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)"
         }}
       >
-        Move mouse or touch screen to exit
+        Double click or press any key to exit
       </div>
     </div>
   );

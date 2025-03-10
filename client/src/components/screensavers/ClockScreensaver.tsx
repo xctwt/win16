@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "@/lib/themeContext";
 import { useScreensaver } from "@/lib/screensaverContext";
+import { MouseEvent, TouchEvent } from "react";
 
-export function ClockScreensaver({ onActivity }: { onActivity: () => void }) {
+export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => void }) {
   const [time, setTime] = useState(new Date());
   const { theme } = useTheme();
   const { clockPosition } = useScreensaver();
@@ -15,8 +16,12 @@ export function ClockScreensaver({ onActivity }: { onActivity: () => void }) {
     return () => clearInterval(timer);
   }, []);
 
-  const handleActivity = () => {
-    onActivity();
+  const handleMouseActivity = (e: MouseEvent) => {
+    onActivity(e.nativeEvent);
+  };
+
+  const handleTouchActivity = (e: TouchEvent) => {
+    onActivity(e.nativeEvent);
   };
 
   // Clock position styles
@@ -45,9 +50,9 @@ export function ClockScreensaver({ onActivity }: { onActivity: () => void }) {
     <div
       className="fixed inset-0 z-50 cursor-none"
       style={{ backgroundColor: "var(--cs-bg)" }}
-      onClick={handleActivity}
-      onMouseMove={handleActivity}
-      onTouchStart={handleActivity}
+      onClick={handleMouseActivity}
+      onMouseMove={handleMouseActivity}
+      onTouchStart={handleTouchActivity}
     >
       <div style={getClockStyles()}>
         <div className={`${clockPosition === 'corner' ? 'text-right' : 'text-center'}`}>
@@ -68,7 +73,7 @@ export function ClockScreensaver({ onActivity }: { onActivity: () => void }) {
               className="text-sm mt-8 opacity-70"
               style={{ color: "var(--cs-text)" }}
             >
-              Move mouse or touch screen to exit
+              Double click or press any key to exit
             </div>
           )}
         </div>
@@ -83,7 +88,7 @@ export function ClockScreensaver({ onActivity }: { onActivity: () => void }) {
             color: "var(--cs-text)"
           }}
         >
-          Move mouse or touch screen to exit
+          Double click or press any key to exit
         </div>
       )}
     </div>

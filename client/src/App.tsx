@@ -21,20 +21,20 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider>
-      <OnekoProvider>
-        <ScreensaverProvider>
-          <WindowProvider>
-            <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <OnekoProvider>
+          <ScreensaverProvider>
+            <WindowProvider>
               <div className="app">
                 <Router />
                 <Toaster />
               </div>
-            </QueryClientProvider>
-          </WindowProvider>
-        </ScreensaverProvider>
-      </OnekoProvider>
-    </ThemeProvider>
+            </WindowProvider>
+          </ScreensaverProvider>
+        </OnekoProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

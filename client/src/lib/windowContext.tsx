@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define window IDs type
-export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings';
+export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings' | 'contact';
 
 interface WindowStateItem {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export interface WindowState {
   drawings: WindowStateItem;
   clicker: WindowStateItem;
   settings: WindowStateItem;
+  contact: WindowStateItem;
 }
 
 interface WindowContextType {
@@ -25,10 +26,11 @@ interface WindowContextType {
   closeWindow: (id: WindowId) => void;
   focusWindow: (id: WindowId) => void;
   toggleWindow: (id: WindowId) => void;
-  handleActivity: () => void; // Added for activity tracking
+  handleActivity: () => void;
 }
 
 const WindowContext = createContext<WindowContextType | undefined>(undefined);
+
 const initialWindowStates: WindowState = {
   music: { isOpen: false, zIndex: 1 },
   info: { isOpen: false, zIndex: 0 },
@@ -37,12 +39,50 @@ const initialWindowStates: WindowState = {
   drawings: { isOpen: false, zIndex: 0 },
   clicker: { isOpen: false, zIndex: 0 },
   settings: { isOpen: false, zIndex: 0 },
+  contact: { isOpen: false, zIndex: 0 },
+};
+
+// Helper function to ensure a window state is valid
+const ensureValidWindowState = (state: WindowState): WindowState => {
+  const validState = { ...initialWindowStates };
+  Object.keys(validState).forEach((key) => {
+    const windowId = key as WindowId;
+    if (state[windowId]) {
+      validState[windowId] = {
+        isOpen: Boolean(state[windowId].isOpen),
+        zIndex: Number(state[windowId].zIndex) || 0
+      };
+    }
+  });
+  return validState;
 };
 
 export function WindowProvider({ children }: { children: ReactNode }) {
-  const [windowStates, setWindowStates] = useState<WindowState>(initialWindowStates);
+  const [windowStates, setWindowStates] = useState<WindowState>(() => {
+    try {
+      // Try to load saved window states from localStorage
+      const savedStates = localStorage.getItem('windowStates');
+      if (savedStates) {
+        const parsed = JSON.parse(savedStates);
+        return ensureValidWindowState(parsed);
+      }
+    } catch (error) {
+      console.warn('Failed to load window states:', error);
+    }
+    return initialWindowStates;
+  });
+
+  // Save window states to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('windowStates', JSON.stringify(windowStates));
+    } catch (error) {
+      console.warn('Failed to save window states:', error);
+    }
+  }, [windowStates]);
 
   const openWindow = (id: WindowId) => {
+    if (!windowStates[id]) return; // Guard against invalid window IDs
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       return {
@@ -53,6 +93,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
   };
 
   const closeWindow = (id: WindowId) => {
+    if (!windowStates[id]) return; // Guard against invalid window IDs
     setWindowStates(prev => ({
       ...prev,
       [id]: { ...prev[id], isOpen: false, zIndex: 0 }
@@ -60,6 +101,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
   };
 
   const focusWindow = (id: WindowId) => {
+    if (!windowStates[id]) return; // Guard against invalid window IDs
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       if (prev[id].zIndex === maxZ) return prev;
@@ -71,6 +113,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleWindow = (id: WindowId) => {
+    if (!windowStates[id]) return; // Guard against invalid window IDs
     setWindowStates(prev => {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       return {
@@ -86,7 +129,6 @@ export function WindowProvider({ children }: { children: ReactNode }) {
   const handleActivity = () => {
     window.dispatchEvent(new Event('appActivity'));
   };
-  
 
   const value = {
     windowStates,
@@ -94,7 +136,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
     closeWindow,
     focusWindow,
     toggleWindow,
-    handleActivity // Expose the activity handler
+    handleActivity
   };
 
   return (
@@ -109,5 +151,9 @@ export function useWindowState() {
   if (!context) {
     throw new Error('useWindowState must be used within a WindowProvider');
   }
-  return context;
+  // Ensure we always return valid window states
+  return {
+    ...context,
+    windowStates: ensureValidWindowState(context.windowStates)
+  };
 }

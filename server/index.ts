@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import scoresRouter from './api/scores';
 import musicRouter from './api/music';
 import messagesRouter from './api/messages';
+import contactRouter from './api/contact';
 import path from "path";
 import { storage } from './storage';
 import { mkdir } from 'fs/promises';
@@ -27,6 +28,7 @@ app.use('/assets', express.static(path.join(process.cwd(), 'client/public/assets
 app.use('/api', scoresRouter);
 app.use('/api', musicRouter);
 app.use('/api', messagesRouter);
+app.use('/api/contact', contactRouter);
 
 // Debug endpoint to test message saving
 app.post('/debug/save-message', async (req, res) => {

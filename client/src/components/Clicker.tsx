@@ -31,7 +31,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import crypto from 'crypto-js';
-import debounce from 'lodash.debounce';
 
 type Tab = 'game' | 'scores';
 type Score = {
@@ -281,11 +280,14 @@ export const Clicker = memo(function Clicker() {
   }, []);
 
   const generateVerificationToken = useCallback(
-    (name: string, score: number, prestige: number): string => {
+    (name: string, score: number, prestige: number): { timestamp: number, token: string } => {
       const timestamp = Date.now();
-      const secret = 'win16-clicker-game'; // Simple secret, would be env var in production
-      const dataString = `${name}|${score}|${prestige}|${timestamp}|${secret}`;
-      return hashString(dataString);
+      // Match the server's token format: hash(timestamp:score)
+      const tokenData = `${timestamp}:${score}`;
+      return {
+        timestamp,
+        token: hashString(tokenData)
+      };
     },
     [hashString]
   );
@@ -315,8 +317,7 @@ export const Clicker = memo(function Clicker() {
     }
 
     try {
-      const timestamp = Date.now();
-      const token = generateVerificationToken(playerName, count, prestige);
+      const { timestamp, token } = generateVerificationToken(playerName, count, prestige);
       
       const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
       const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
@@ -343,7 +344,7 @@ export const Clicker = memo(function Clicker() {
     } catch (error) {
       console.error('Error in handleSaveScore:', error);
     }
-  }, [playerName, count, prestige, generateVerificationToken, hashString, formatCount, saveScoreMutation, resetGame, toast]);
+  }, [playerName, count, prestige, generateVerificationToken, saveScoreMutation, resetGame, toast]);
 
   // Fetch seasons
   const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } = useQuery({
@@ -417,9 +418,9 @@ export const Clicker = memo(function Clicker() {
     }
   }, [clickAnimations]);
 
-  // Throttled handleClick function
+  // handleClick function
   const handleClick = useCallback(
-    debounce((e?: React.MouseEvent) => {
+    (e?: React.MouseEvent) => {
       // Determine if it's a critical hit
       const isCritical = Math.random() < criticalChance;
       const clickValue = isCritical ? multiplier * criticalMultiplier : multiplier;
@@ -552,8 +553,8 @@ export const Clicker = memo(function Clicker() {
           });
         });
       }
-    }, 100), // Throttle to 100ms
-    [criticalChance, criticalMultiplier, multiplier]
+    },
+    [multiplier, criticalChance, criticalMultiplier, dispatchClickAnimations, setCount, buttonRef]
   );
 
   // Memoized cost calculations

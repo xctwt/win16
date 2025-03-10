@@ -13,14 +13,27 @@ interface WindowProps {
 
 export const Window = memo(function Window({ title, children, defaultPosition = { x: 20, y: 20 }, windowId }: WindowProps) {
   const { closeWindow, focusWindow, windowStates } = useWindowState();
-  const windowState = windowStates[windowId];
-
-  if (!windowState) return null;
+  
+  // Ensure we have a valid window state
+  const windowState = windowStates?.[windowId] ?? { isOpen: false, zIndex: 0 };
+  
+  // If window state is invalid or window is not open, don't render
+  if (!windowState || !windowState.isOpen) {
+    return null;
+  }
 
   const handleCloseClick = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     closeWindow(windowId);
+  };
+
+  const handleFocus = () => {
+    try {
+      focusWindow(windowId);
+    } catch (error) {
+      console.error('Error focusing window:', error);
+    }
   };
 
   const memoizedX = useMemo(() => <X size={14} />, []);
@@ -29,13 +42,18 @@ export const Window = memo(function Window({ title, children, defaultPosition = 
     <Draggable 
       handle=".cs-titlebar" 
       defaultPosition={defaultPosition}
-      onStart={() => focusWindow(windowId)}
-      onMouseDown={() => focusWindow(windowId)}
+      onStart={handleFocus}
+      onMouseDown={handleFocus}
     >
       <div 
         className="cs-window" 
-        style={{ zIndex: windowState.zIndex }}
-        onMouseDown={() => focusWindow(windowId)}
+        style={{ 
+          zIndex: windowState.zIndex || 0,
+          position: 'absolute',
+          touchAction: 'none'
+        }}
+        onMouseDown={handleFocus}
+        onTouchStart={handleFocus}
       >
         <div className="cs-titlebar">
           <span>{title}</span>

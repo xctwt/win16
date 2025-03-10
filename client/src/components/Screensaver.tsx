@@ -3,7 +3,7 @@ import { ClockScreensaver } from "./screensavers/ClockScreensaver";
 import { RainScreensaver } from "./screensavers/RainScreensaver";
 import { StarfieldScreensaver } from "./screensavers/StarfieldScreensaver";
 
-export function Screensaver({ onActivity }: { onActivity: () => void }) {
+export function Screensaver({ onActivity }: { onActivity: (e: Event) => void }) {
   const { screensaver } = useScreensaver();
 
   // Render the selected screensaver

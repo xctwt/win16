@@ -47,7 +47,8 @@ html, body {
 
 .cs-button-active {
   background: var(--cs-hover);
-  border-color: var(--cs-text);
+  border: 2px solid var(--cs-text);
+  padding: 3px 7px; /* Adjust padding to account for thicker border */
 }
 
 /* Make sure the app background uses the correct variable */
@@ -125,6 +126,58 @@ html, body {
   color: var(--cs-text);
   padding: 4px;
   width: 100%;
+}
+
+/* Select Styles */
+.cs-select {
+  background: var(--cs-window);
+  border: 1px solid var(--cs-border);
+  color: var(--cs-text);
+  padding: 4px 8px;
+  cursor: pointer;
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 16px;
+  padding-right: 32px;
+}
+
+:root.light .cs-select {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+.cs-select:hover {
+  background-color: var(--cs-hover);
+}
+
+.cs-select:focus {
+  outline: none;
+  border-color: var(--cs-text);
+}
+
+.cs-select option {
+  background: var(--cs-window);
+  color: var(--cs-text);
+}
+
+/* Fix for Firefox */
+@-moz-document url-prefix() {
+  .cs-select option {
+    background-color: var(--cs-window) !important;
+  }
+}
+
+/* Fix for Chrome/Safari */
+.cs-select::-webkit-listbox {
+  background-color: var(--cs-window);
+}
+
+.cs-select option:checked {
+  background-color: var(--cs-hover);
 }
 
 /* Desktop Icons */
