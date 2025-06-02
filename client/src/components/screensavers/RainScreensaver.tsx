@@ -13,7 +13,11 @@ interface Spark {
   go: () => void;
 }
 
-export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void }) {
+export function RainScreensaver({
+  onActivity,
+}: {
+  onActivity: (e: Event) => void;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { theme } = useTheme();
   const { clockPosition } = useScreensaver();
@@ -50,9 +54,9 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
       direction: { x: -0.5, y: 1 },
       size: [2, 2],
       maxopacity: 1,
-      color: theme === 'dark' ? "255, 255, 255" : "0, 0, 0", // Black and white based on theme
+      color: theme === "dark" ? "255, 255, 255" : "0, 0, 0", // Black and white based on theme
       randColor: false,
-      acceleration: [5, 40]
+      acceleration: [5, 40],
     };
 
     // Adjust for mobile if needed
@@ -65,7 +69,7 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    
+
     setCanvasWidth();
     window.addEventListener("resize", setCanvasWidth);
 
@@ -80,7 +84,7 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
       const acceleration = rand(OPT.acceleration[0], OPT.acceleration[1]);
       const color = OPT.color;
       const opacity = OPT.maxopacity - age / (OPT.lifetime * rand(1, 10));
-      
+
       return {
         x,
         y,
@@ -88,12 +92,12 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
         acceleration,
         color,
         opacity,
-        go: function() {
-          this.x += OPT.speed * OPT.direction.x * this.acceleration / 2;
-          this.y += OPT.speed * OPT.direction.y * this.acceleration / 2;
-          
+        go: function () {
+          this.x += (OPT.speed * OPT.direction.x * this.acceleration) / 2;
+          this.y += (OPT.speed * OPT.direction.y * this.acceleration) / 2;
+
           this.opacity = OPT.maxopacity - ++this.age / OPT.lifetime;
-        }
+        },
       };
     }
 
@@ -106,10 +110,11 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
 
     // Draw a spark
     function drawSpark(ctx: CanvasRenderingContext2D, spark: Spark) {
-      let x = spark.x, y = spark.y;
-      
+      let x = spark.x,
+        y = spark.y;
+
       spark.go();
-      
+
       ctx.beginPath();
       ctx.fillStyle = `rgba(${spark.color}, ${spark.opacity})`;
       ctx.rect(x, y, OPT.size[0], OPT.size[1]);
@@ -118,7 +123,7 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
 
     // Initialize sparks array
     let sparks: Spark[] = [];
-    
+
     // Add sparks at a controlled rate
     const sparkInterval = setInterval(() => {
       if (sparks.length < OPT.amount) {
@@ -129,10 +134,11 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
     // Animation loop
     function draw() {
       if (!ctx || !canvas) return;
-      
-      ctx.fillStyle = theme === 'dark' ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
+
+      ctx.fillStyle =
+        theme === "dark" ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       sparks.forEach((spark, i, array) => {
         if (spark.opacity <= 0) {
           array.splice(i, 1);
@@ -140,7 +146,7 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
           drawSpark(ctx, spark);
         }
       });
-    
+
       animationFrame = window.requestAnimationFrame(draw);
     }
 
@@ -157,18 +163,18 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
 
   // Clock position styles
   const getClockStyles = () => {
-    if (clockPosition === 'center') {
+    if (clockPosition === "center") {
       return {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        textAlign: "center" as const
+        textAlign: "center" as const,
       };
     } else {
       return {
         top: "20px",
         right: "20px",
-        textAlign: "right" as const
+        textAlign: "right" as const,
       };
     }
   };
@@ -181,36 +187,45 @@ export function RainScreensaver({ onActivity }: { onActivity: (e: Event) => void
       onTouchStart={handleTouchActivity}
     >
       <canvas ref={canvasRef} className="w-full h-full" />
-      
+
       {/* Clock overlay */}
-      <div 
+      <div
         className="absolute font-mono"
         style={{
           ...getClockStyles(),
-          color: theme === 'dark' ? "rgba(255, 255, 255, 0.8)" : "rgba(0, 0, 0, 0.8)",
-          textShadow: theme === 'dark' 
-            ? "0 0 10px rgba(255, 255, 255, 0.3)" 
-            : "0 0 10px rgba(0, 0, 0, 0.3)"
+          color:
+            theme === "dark"
+              ? "rgba(255, 255, 255, 0.8)"
+              : "rgba(0, 0, 0, 0.8)",
+          textShadow:
+            theme === "dark"
+              ? "0 0 10px rgba(255, 255, 255, 0.3)"
+              : "0 0 10px rgba(0, 0, 0, 0.3)",
         }}
       >
-        <div className={clockPosition === 'center' ? "text-8xl" : "text-4xl"}>
+        <div className={clockPosition === "center" ? "text-8xl" : "text-4xl"}>
           {time.toLocaleTimeString()}
         </div>
-        <div className={`mt-2 opacity-70 ${clockPosition === 'center' ? "text-xl" : "text-sm"}`}>
+        <div
+          className={`mt-2 opacity-70 ${clockPosition === "center" ? "text-xl" : "text-sm"}`}
+        >
           {time.toLocaleDateString()}
         </div>
       </div>
-      
-      <div 
+
+      <div
         className="absolute text-sm opacity-70"
         style={{
           right: "20px",
           bottom: "20px",
-          color: theme === 'dark' ? "rgba(255, 255, 255, 0.6)" : "rgba(0, 0, 0, 0.6)"
+          color:
+            theme === "dark"
+              ? "rgba(255, 255, 255, 0.6)"
+              : "rgba(0, 0, 0, 0.6)",
         }}
       >
         Double click or press any key to exit
       </div>
     </div>
   );
-} 
+}

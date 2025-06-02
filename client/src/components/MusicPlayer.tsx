@@ -1,8 +1,17 @@
-import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
-import { Window } from './Windows';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Loader2, List, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
+import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
+import { Window } from "./Windows";
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  Loader2,
+  List,
+  X,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 interface Track {
   title: string;
@@ -25,10 +34,13 @@ export const MusicPlayer = memo(function MusicPlayer() {
   const { toast } = useToast();
 
   const defaultWindowPosition = useMemo(() => ({ x: 95, y: 21 }), []);
-  
+
   // Memoize icons to prevent unnecessary re-renders
   const skipBackIcon = useMemo(() => <SkipBack className="w-4 h-4" />, []);
-  const skipForwardIcon = useMemo(() => <SkipForward className="w-4 h-4" />, []);
+  const skipForwardIcon = useMemo(
+    () => <SkipForward className="w-4 h-4" />,
+    [],
+  );
   const pauseIcon = useMemo(() => <Pause className="w-4 h-4" />, []);
   const playIcon = useMemo(() => <Play className="w-4 h-4" />, []);
   const listIcon = useMemo(() => <List className="w-4 h-4" />, []);
@@ -36,14 +48,14 @@ export const MusicPlayer = memo(function MusicPlayer() {
   const volumeIcon = useMemo(() => <Volume2 className="w-4 h-4" />, []);
 
   const fetchTracks = async (): Promise<Track[]> => {
-    const response = await fetch('/api/tracks');
-    if (!response.ok) throw new Error('Failed to load tracks');
+    const response = await fetch("/api/tracks");
+    if (!response.ok) throw new Error("Failed to load tracks");
     return response.json();
   };
 
   const query: UseQueryResult<Track[], Error> = useQuery({
-    queryKey: ['tracks'],
-    queryFn: fetchTracks
+    queryKey: ["tracks"],
+    queryFn: fetchTracks,
   });
 
   const tracks: Track[] = query.data || [];
@@ -53,9 +65,9 @@ export const MusicPlayer = memo(function MusicPlayer() {
   useEffect(() => {
     if (query.error) {
       toast({
-        title: 'Error loading tracks',
+        title: "Error loading tracks",
         description: query.error.message,
-        variant: 'destructive'
+        variant: "destructive",
       });
     }
   }, [query.error, toast]);
@@ -73,14 +85,14 @@ export const MusicPlayer = memo(function MusicPlayer() {
       audioRef.current.load();
       // Reset time when changing tracks
       setCurrentTime(0);
-      
+
       if (isPlaying) {
-        audioRef.current.play().catch(error => {
-          console.error('Error playing audio:', error);
+        audioRef.current.play().catch((error) => {
+          console.error("Error playing audio:", error);
           toast({
-            title: 'Error playing audio',
+            title: "Error playing audio",
             description: `Could not play ${tracks[currentSong]?.title}`,
-            variant: 'destructive'
+            variant: "destructive",
           });
           setIsPlaying(false);
         });
@@ -91,12 +103,12 @@ export const MusicPlayer = memo(function MusicPlayer() {
   // Handle play/pause state changes without reloading the audio
   useEffect(() => {
     if (audioRef.current && tracks.length > 0 && isPlaying) {
-      audioRef.current.play().catch(error => {
-        console.error('Error playing audio:', error);
+      audioRef.current.play().catch((error) => {
+        console.error("Error playing audio:", error);
         toast({
-          title: 'Error playing audio',
+          title: "Error playing audio",
           description: `Could not play ${tracks[currentSong]?.title}`,
-          variant: 'destructive'
+          variant: "destructive",
         });
         setIsPlaying(false);
       });
@@ -107,7 +119,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
     if (tracks.length > 0 && currentSong < tracks.length) {
       const currentTrack = tracks[currentSong];
       if (!currentTrack) return;
-      
+
       const text = `${currentTrack.artist} - ${currentTrack.title}`;
       const textWidth = text.length * 8;
       const containerWidth = 256;
@@ -115,7 +127,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
       if (textWidth > containerWidth) {
         setScrollPosition(0);
         const interval = setInterval(() => {
-          setScrollPosition(prev => {
+          setScrollPosition((prev) => {
             if (prev <= -(textWidth + 40)) return 0;
             return prev - 1;
           });
@@ -157,16 +169,19 @@ export const MusicPlayer = memo(function MusicPlayer() {
     if (audioRef.current) {
       const newTime = audioRef.current.currentTime;
       const newDuration = audioRef.current.duration || 0;
-      
+
       setCurrentTime(newTime);
       setDuration(newDuration);
-      
+
       // Update Media Session position state
-      if ('mediaSession' in navigator && 'setPositionState' in navigator.mediaSession) {
+      if (
+        "mediaSession" in navigator &&
+        "setPositionState" in navigator.mediaSession
+      ) {
         navigator.mediaSession.setPositionState({
           duration: newDuration,
           playbackRate: audioRef.current.playbackRate,
-          position: newTime
+          position: newTime,
         });
       }
     }
@@ -183,7 +198,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
     }
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   const playTrack = (index: number) => {
@@ -192,9 +207,10 @@ export const MusicPlayer = memo(function MusicPlayer() {
   };
 
   // Safely access track at current index
-  const currentTrack = tracks.length > 0 && currentSong < tracks.length 
-    ? tracks[currentSong] 
-    : null;
+  const currentTrack =
+    tracks.length > 0 && currentSong < tracks.length
+      ? tracks[currentSong]
+      : null;
 
   const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
     if (audioRef.current && duration) {
@@ -202,7 +218,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
       const rect = progressBar.getBoundingClientRect();
       const offsetX = e.clientX - rect.left;
       const newTime = (offsetX / rect.width) * duration;
-      
+
       // Update audio time
       audioRef.current.currentTime = newTime;
       setCurrentTime(newTime);
@@ -215,7 +231,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
       const offsetX = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
       const percentage = offsetX / rect.width;
       const previewTime = percentage * duration;
-      
+
       setHoverTime(previewTime);
       setHoverPosition(offsetX);
     }
@@ -228,7 +244,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
 
   // Set up Media Session API for media controls
   useEffect(() => {
-    if ('mediaSession' in navigator && currentTrack) {
+    if ("mediaSession" in navigator && currentTrack) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title,
         artist: currentTrack.artist,
@@ -236,49 +252,61 @@ export const MusicPlayer = memo(function MusicPlayer() {
       });
 
       // Define action handlers
-      navigator.mediaSession.setActionHandler('play', () => {
+      navigator.mediaSession.setActionHandler("play", () => {
         if (!isPlaying) togglePlay();
       });
-      
-      navigator.mediaSession.setActionHandler('pause', () => {
+
+      navigator.mediaSession.setActionHandler("pause", () => {
         if (isPlaying) togglePlay();
       });
-      
-      navigator.mediaSession.setActionHandler('previoustrack', prevSong);
-      navigator.mediaSession.setActionHandler('nexttrack', nextSong);
-      
+
+      navigator.mediaSession.setActionHandler("previoustrack", prevSong);
+      navigator.mediaSession.setActionHandler("nexttrack", nextSong);
+
       // Add seek handlers
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
         if (audioRef.current && details.seekTime !== undefined) {
           audioRef.current.currentTime = details.seekTime;
           setCurrentTime(details.seekTime);
         }
       });
-      
+
       // Update position state
-      if ('setPositionState' in navigator.mediaSession) {
+      if ("setPositionState" in navigator.mediaSession) {
         navigator.mediaSession.setPositionState({
           duration: duration || 0,
           playbackRate: audioRef.current?.playbackRate || 1,
-          position: currentTime || 0
+          position: currentTime || 0,
         });
       }
     }
-    
+
     return () => {
-      if ('mediaSession' in navigator) {
+      if ("mediaSession" in navigator) {
         // Clear handlers when component unmounts
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('seekto', null);
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("previoustrack", null);
+        navigator.mediaSession.setActionHandler("nexttrack", null);
+        navigator.mediaSession.setActionHandler("seekto", null);
       }
     };
-  }, [currentTrack, isPlaying, duration, currentTime, togglePlay, prevSong, nextSong]);
+  }, [
+    currentTrack,
+    isPlaying,
+    duration,
+    currentTime,
+    togglePlay,
+    prevSong,
+    nextSong,
+  ]);
 
   return (
-  <Window title="player" windowId="music" defaultPosition={defaultWindowPosition}>
+    <Window
+      title="player"
+      windowId="music"
+      defaultPosition={defaultWindowPosition}
+    >
       <div className="w-64 space-y-4 p-4">
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
@@ -292,11 +320,11 @@ export const MusicPlayer = memo(function MusicPlayer() {
               onEnded={handleEnded}
               onTimeUpdate={handleTimeUpdate}
               onError={(e) => {
-                console.error('Audio error:', e);
+                console.error("Audio error:", e);
                 toast({
-                  title: 'Error loading audio',
+                  title: "Error loading audio",
                   description: `Could not load ${currentTrack?.title}`,
-                  variant: 'destructive'
+                  variant: "destructive",
                 });
               }}
             />
@@ -307,8 +335,10 @@ export const MusicPlayer = memo(function MusicPlayer() {
                 style={{ transform: `translateX(${scrollPosition}px)` }}
               >
                 {currentTrack?.artist} - {currentTrack?.title}
-                {currentTrack?.artist && currentTrack?.title && 
-                  ((currentTrack.artist.length + currentTrack.title.length) * 8 > 256) && (
+                {currentTrack?.artist &&
+                  currentTrack?.title &&
+                  (currentTrack.artist.length + currentTrack.title.length) * 8 >
+                    256 && (
                     <>
                       &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                       {currentTrack.artist} - {currentTrack.title}
@@ -319,34 +349,36 @@ export const MusicPlayer = memo(function MusicPlayer() {
 
             {/* Progress bar */}
             <div className="space-y-2 relative">
-              <div 
+              <div
                 ref={progressBarRef}
                 className="progress-bar cursor-pointer relative"
                 onClick={handleSeek}
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
               >
-                <div 
+                <div
                   className="progress-bar-fill"
-                  style={{ width: `${(currentTime / (duration || 1)) * 100 || 0}%` }}
+                  style={{
+                    width: `${(currentTime / (duration || 1)) * 100 || 0}%`,
+                  }}
                 />
                 {hoverTime !== null && hoverPosition !== null && (
                   <>
                     {/* Hover position indicator */}
-                    <div 
+                    <div
                       className="absolute top-0 bottom-0 w-0.5 bg-white"
-                      style={{ 
-                        left: `${hoverPosition}px`, 
-                        transform: 'translateX(-50%)',
-                        opacity: 0.8
+                      style={{
+                        left: `${hoverPosition}px`,
+                        transform: "translateX(-50%)",
+                        opacity: 0.8,
                       }}
                     />
                     {/* Hover time tooltip */}
-                    <div 
+                    <div
                       className="absolute bottom-full mb-1 px-1 py-0.5 bg-black text-white text-xs rounded"
-                      style={{ 
-                        left: `${hoverPosition}px`, 
-                        transform: 'translateX(-50%)'
+                      style={{
+                        left: `${hoverPosition}px`,
+                        transform: "translateX(-50%)",
                       }}
                     >
                       {formatTime(hoverTime)}
@@ -360,7 +392,6 @@ export const MusicPlayer = memo(function MusicPlayer() {
               </div>
             </div>
 
-
             <div className="flex justify-center space-x-4">
               <button className="cs-button" onClick={prevSong}>
                 {skipBackIcon}
@@ -371,8 +402,8 @@ export const MusicPlayer = memo(function MusicPlayer() {
               <button className="cs-button" onClick={nextSong}>
                 {skipForwardIcon}
               </button>
-              <button 
-                className={`cs-button ${showPlaylist ? 'border-cs-text' : ''}`} 
+              <button
+                className={`cs-button ${showPlaylist ? "border-cs-text" : ""}`}
                 onClick={() => setShowPlaylist(!showPlaylist)}
               >
                 {showPlaylist ? closeIcon : listIcon}
@@ -406,7 +437,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
                       key={index}
                       onClick={() => playTrack(index)}
                       className={`w-full text-left p-2 hover:bg-cs-hover
-                        ${currentSong === index ? 'border border-cs-text' : 'border-transparent border'}`}
+                        ${currentSong === index ? "border border-cs-text" : "border-transparent border"}`}
                     >
                       <div className="truncate text-sm">
                         {track.artist} - {track.title}

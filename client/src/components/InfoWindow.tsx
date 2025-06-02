@@ -1,6 +1,6 @@
-import { Window } from './Windows';
-import { useMemo, useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
+import { Window } from "./Windows";
+import { useMemo, useState } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 
 interface ChangelogEntry {
   date: string;
@@ -10,47 +10,47 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    date: '2024-03-10',
+    date: "2024-03-10",
     changes: [
-      'Added anonymous contact form with rich text editor',
-      'Removed clicker debounce, fixed score uploading',
-      'Added media controls to music player',
-      'Added seekbar to music player',
-      'Added changelog window'
-    ]
+      "Added anonymous contact form with rich text editor",
+      "Removed clicker debounce, fixed score uploading",
+      "Added media controls to music player",
+      "Added seekbar to music player",
+      "Added changelog window",
+    ],
   },
   {
-    date: '2024-03-09',
+    date: "2024-03-09",
     changes: [
-      'Added new screensaver options',
-      'A bunch of react optimizations'
-    ]
+      "Added new screensaver options",
+      "A bunch of react optimizations",
+    ],
   },
   {
-    date: '2024-03-08',
+    date: "2024-03-08",
     changes: [
-      'Fixed null scores in clicker',
-      'Added rgb color picker to paint tool'
-    ]
+      "Fixed null scores in clicker",
+      "Added rgb color picker to paint tool",
+    ],
   },
   {
-    date: '2024-03-07',
+    date: "2024-03-07",
     changes: [
-      'Clicker S2: Crit hits, Steep price curve, Prestige levels with unique colors',
-      'Added oneko cat follow mouse'
-    ]
-  }
+      "Clicker S2: Crit hits, Steep price curve, Prestige levels with unique colors",
+      "Added oneko cat follow mouse",
+    ],
+  },
 ];
 
 export function InfoWindow() {
   const defaultPosition = useMemo(() => ({ x: 75, y: 105 }), []);
-  const [expandedDates, setExpandedDates] = useState<string[]>([changelog[0].date]);
+  const [expandedDates, setExpandedDates] = useState<string[]>([
+    changelog[0].date,
+  ]);
 
   const toggleExpand = (date: string) => {
-    setExpandedDates(prev => 
-      prev.includes(date) 
-        ? prev.filter(d => d !== date)
-        : [...prev, date]
+    setExpandedDates((prev) =>
+      prev.includes(date) ? prev.filter((d) => d !== date) : [...prev, date],
     );
   };
 
@@ -59,20 +59,17 @@ export function InfoWindow() {
       <div className="w-64 space-y-4">
         <div className="text-sm">
           <p className="mb-2">
-            inspired by <a href="https://hardanimeshirts.com">hardanimeshirts</a>
+            inspired by{" "}
+            <a href="https://hardanimeshirts.com">hardanimeshirts</a>
           </p>
-          <p className="mb-2">
-            /help in chat to see commands
-          </p>
-          <p>
-            &lt;3
-          </p>
+          <p className="mb-2">/help in chat to see commands</p>
+          <p>&lt;3</p>
         </div>
 
         <div className="border-t border-cs-border pt-4">
           <h3 className="text-sm font-medium mb-2">Changelog</h3>
           <div className="space-y-2">
-            {changelog.map(entry => (
+            {changelog.map((entry) => (
               <div key={entry.date} className="text-xs">
                 <button
                   className="flex items-center gap-1 w-full hover:text-blue-300 transition-colors"
@@ -100,9 +97,7 @@ export function InfoWindow() {
         </div>
 
         <div className="border-t border-cs-border pt-2">
-          <p className="text-xs text-center">
-            Made with HATE
-          </p>
+          <p className="text-xs text-center">Made with HATE</p>
         </div>
       </div>
     </Window>
