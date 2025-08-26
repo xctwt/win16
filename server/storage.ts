@@ -287,49 +287,29 @@ export class MemStorage implements IStorage {
         (record.ipAddress === ipAddress || record.clientId === vote.clientId)
     );
 
+    // If vote already exists, do NOT allow changing it
     if (existingVote) {
-      // If they're trying to vote the same way again, ignore
-      if (existingVote.voteType === vote.voteType) {
-        return drawing;
-      }
-      
-      // They're changing their vote
-      existingVote.voteType = vote.voteType;
-      existingVote.timestamp = new Date();
-      
-      // Update the drawing's score
-      if (vote.voteType === 'up') {
-        drawing.upvotes++;
-        drawing.downvotes--;
-      } else {
-        drawing.upvotes--;
-        drawing.downvotes++;
-      }
-    } else {
-      // New vote
-      this.voteRecords.push({
-        drawingId: vote.drawingId,
-        ipAddress,
-        clientId: vote.clientId,
-        timestamp: new Date(),
-        voteType: vote.voteType
-      });
-      
-      // Update the drawing's score
-      if (vote.voteType === 'up') {
-        drawing.upvotes++;
-      } else {
-        drawing.downvotes++;
-      }
+      return drawing; // No changes allowed after first vote
     }
-    
-    // Recalculate total score
+
+    // New vote
+    this.voteRecords.push({
+      drawingId: vote.drawingId,
+      ipAddress,
+      clientId: vote.clientId,
+      timestamp: new Date(),
+      voteType: vote.voteType
+    });
+
+    if (vote.voteType === 'up') {
+      drawing.upvotes++;
+    } else {
+      drawing.downvotes++;
+    }
+
     drawing.score = drawing.upvotes - drawing.downvotes;
-    
-    // Save changes
     await this.saveMetadata();
     await this.saveVoteRecords();
-    
     return drawing;
   }
 

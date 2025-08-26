@@ -1,35 +1,91 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertDrawingSchema, type InsertDrawing, type VoteRequest } from "@shared/schema";
-import axios from "axios";
-import dotenv from "dotenv";
+import { insertDrawingSchema, type InsertDrawing, type VoteRequest, type PowPayload } from "@shared/schema";
 import path from "path";
 import fs from "fs";
 
-// Load environment variables from .env file
-const envPath = path.resolve(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
-  console.log('Loading environment variables from:', envPath);
-  dotenv.config({ path: envPath });
-} else {
-  console.warn('No .env file found at:', envPath);
+// Simple in-memory PoW challenge store
+interface PowChallenge {
+  id: string;
+  prefix: string; // random prefix to include in hash input
+  difficulty: number; // number of leading zero nybbles required
+  expiresAt: number; // epoch ms
+  ip: string;
 }
 
-// Cloudflare Turnstile secret key from environment variables
-const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY;
+const powChallenges = new Map<string, PowChallenge>();
 
-// Check if Turnstile key is properly configured
-if (!TURNSTILE_SECRET_KEY) {
-  console.warn('WARNING: Turnstile secret key not found in environment variables. Voting will not work correctly.');
-  console.warn('Please ensure your .env file contains TURNSTILE_SECRET_KEY=your_secret_key');
-} else {
-  console.log('Turnstile secret key loaded successfully');
+// Basic rate limiting per IP (votes per time window)
+const VOTE_WINDOW_MS = 60_000; // 1 minute
+const MAX_VOTES_PER_WINDOW = 15; // per IP
+const voteTimestampsPerIp = new Map<string, number[]>();
+
+function cleanOldVotes(ip: string) {
+  const now = Date.now();
+  const arr = voteTimestampsPerIp.get(ip) || [];
+  const filtered = arr.filter(ts => now - ts < VOTE_WINDOW_MS);
+  voteTimestampsPerIp.set(ip, filtered);
+  return filtered;
+}
+
+function canVote(ip: string) {
+  const arr = cleanOldVotes(ip);
+  return arr.length < MAX_VOTES_PER_WINDOW;
+}
+
+function recordVote(ip: string) {
+  const arr = cleanOldVotes(ip);
+  arr.push(Date.now());
+  voteTimestampsPerIp.set(ip, arr);
+}
+
+function randomId(len = 16) {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let out = '';
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+// Issue a PoW challenge
+function createPowChallenge(ip: string, difficulty = 4): PowChallenge { // difficulty = leading zero hex nybbles
+  const id = randomId();
+  const prefix = randomId(24);
+  const expiresAt = Date.now() + 5 * 60_000; // 5 minutes
+  const challenge: PowChallenge = { id, prefix, difficulty, expiresAt, ip };
+  powChallenges.set(id, challenge);
+  return challenge;
+}
+
+// Verify PoW
+import crypto from 'crypto';
+function verifyPow(challenge: PowChallenge, payload: PowPayload, clientId: string): boolean {
+  if (challenge.id !== payload.challengeId) return false;
+  if (Date.now() > challenge.expiresAt) return false;
+  // Input string includes prefix + drawing + voteType + clientId + nonce
+  const base = `${challenge.prefix}:${payload.challengeId}:${clientId}:${payload.nonce}`;
+  const hash = crypto.createHash('sha256').update(base).digest('hex');
+  if (hash !== payload.hash) return false;
+  // Check difficulty (leading zero nybbles)
+  const requiredZeros = challenge.difficulty; // each nybble is a hex char
+  for (let i = 0; i < requiredZeros; i++) {
+    if (hash[i] !== '0') return false;
+  }
+  return true;
 }
 
 export function registerRoutes(app: Express): Server {
-  // Note: Message routes are now handled by messagesRouter in server/api/messages.ts
-  
+  // Get PoW challenge
+  app.get('/api/vote/pow-challenge', (req: Request, res: Response) => {
+    try {
+      const ip = req.ip || 'unknown';
+      const challenge = createPowChallenge(ip);
+      res.json({ challengeId: challenge.id, prefix: challenge.prefix, difficulty: challenge.difficulty, expiresAt: challenge.expiresAt });
+    } catch (e) {
+      res.status(500).json({ error: 'Failed to create challenge' });
+    }
+  });
+
   // Get all drawings with optional sorting
   app.get("/api/drawings", async (req: Request, res: Response) => {
     try {
@@ -45,28 +101,22 @@ export function registerRoutes(app: Express): Server {
   // Create a new drawing
   app.post("/api/drawings", async (req: Request, res: Response) => {
     try {
-      // Create a drawing object that matches the InsertDrawing interface
       const drawingData: InsertDrawing = {
         name: req.body.name,
         author: req.body.author,
         image: req.body.image
       };
-      
-      // Validate with schema
       const result = insertDrawingSchema.safeParse({
         name: drawingData.name,
         author: drawingData.author,
-        imageData: drawingData.image // Map 'image' to 'imageData' for schema validation
+        imageData: drawingData.image
       });
-      
       if (!result.success) {
         return res.status(400).json({ 
           error: "Invalid drawing format",
           details: result.error.format()
         });
       }
-      
-      // Pass the validated data to storage
       const drawing = await storage.createDrawing(drawingData);
       res.json(drawing);
     } catch (error) {
@@ -75,7 +125,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Vote on a drawing
+  // Vote on a drawing (with PoW and rate limiting)
   app.post("/api/drawings/:id/vote", async (req: Request, res: Response) => {
     try {
       const drawingId = parseInt(req.params.id);
@@ -83,62 +133,25 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).json({ error: "Invalid drawing ID" });
       }
 
-      const { voteType, clientId, turnstileToken } = req.body;
-      
-      // Validate vote type
-      if (voteType !== 'up' && voteType !== 'down') {
-        return res.status(400).json({ error: "Invalid vote type" });
-      }
-      
-      // Validate client ID
-      if (!clientId || typeof clientId !== 'string') {
-        return res.status(400).json({ error: "Invalid client ID" });
-      }
-      
-      // Validate Turnstile token
-      if (!turnstileToken) {
-        return res.status(400).json({ error: "Turnstile verification required" });
-      }
-      
-      // Verify Turnstile token
-      try {
-        // Create form data
-        const params = new URLSearchParams();
-        params.append('secret', TURNSTILE_SECRET_KEY || '');
-        params.append('response', turnstileToken);
-        if (req.ip) params.append('remoteip', req.ip);
+      const { voteType, clientId, pow } = req.body as { voteType: 'up' | 'down'; clientId: string; pow: PowPayload };
+      if (voteType !== 'up' && voteType !== 'down') return res.status(400).json({ error: 'Invalid vote type' });
+      if (!clientId || typeof clientId !== 'string') return res.status(400).json({ error: 'Invalid client ID' });
+      if (!pow || typeof pow !== 'object') return res.status(400).json({ error: 'Missing PoW data' });
 
-        // Make the request with the correct content type
-        const turnstileResponse = await axios({
-          method: 'post',
-          url: 'https://challenges.cloudflare.com/turnstile/v0/siteverify',
-          data: params,
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          }
-        });
-        
-        if (!turnstileResponse.data.success) {
-          console.error('Turnstile verification failed:', turnstileResponse.data);
-          return res.status(400).json({ 
-            error: "Turnstile verification failed",
-            details: turnstileResponse.data
-          });
-        }
-      } catch (error) {
-        console.error('Error verifying Turnstile token:', error);
-        return res.status(400).json({ error: "Failed to verify Turnstile token" });
-      }
-      
-      // Process the vote
-      const voteRequest: VoteRequest = {
-        drawingId,
-        voteType,
-        clientId,
-        turnstileToken
-      };
-      
-      const updatedDrawing = await storage.voteDrawing(voteRequest, req.ip || '');
+      const ip = req.ip || 'unknown';
+      if (!canVote(ip)) return res.status(429).json({ error: 'Too many votes from this IP. Please slow down.' });
+
+      const challenge = powChallenges.get(pow.challengeId);
+      if (!challenge) return res.status(400).json({ error: 'Unknown challenge' });
+      if (challenge.ip !== ip) return res.status(400).json({ error: 'Challenge/IP mismatch' });
+
+      if (!verifyPow(challenge, pow, clientId)) return res.status(400).json({ error: 'Invalid PoW' });
+
+      powChallenges.delete(challenge.id);
+
+      const voteRequest: VoteRequest = { drawingId, voteType, clientId, pow };
+      const updatedDrawing = await storage.voteDrawing(voteRequest, ip);
+      recordVote(ip);
       res.json(updatedDrawing);
     } catch (error) {
       console.error('Error processing vote:', error);

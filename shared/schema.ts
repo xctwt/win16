@@ -58,10 +58,17 @@ export interface VoteRecord {
   voteType: 'up' | 'down';
 }
 
-// Interface for vote request
+// Proof-of-Work payload sent from client when casting a vote
+export interface PowPayload {
+  challengeId: string;
+  nonce: number;
+  hash: string; // Hex hash of (data + nonce)
+}
+
+// Interface for vote request (Turnstile removed, now uses PoW)
 export interface VoteRequest {
   drawingId: number;
   voteType: 'up' | 'down';
   clientId: string;
-  turnstileToken: string; // Cloudflare Turnstile token
+  pow: PowPayload;
 }

@@ -15,9 +15,6 @@ router.post('/', async (req, res) => {
   try {
     const { message } = req.body;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
 
     if (!DISCORD_WEBHOOK_URL) {
       console.error('Discord webhook URL is not configured');

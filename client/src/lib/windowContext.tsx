@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define window IDs type
-export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings' | 'contact';
+export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings' | 'contact' | 'account';
 
 interface WindowStateItem {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export interface WindowState {
   clicker: WindowStateItem;
   settings: WindowStateItem;
   contact: WindowStateItem;
+  account: WindowStateItem;
 }
 
 interface WindowContextType {
@@ -40,6 +41,7 @@ const initialWindowStates: WindowState = {
   clicker: { isOpen: false, zIndex: 0 },
   settings: { isOpen: false, zIndex: 0 },
   contact: { isOpen: false, zIndex: 0 },
+  account: { isOpen: false, zIndex: 0 },
 };
 
 // Helper function to ensure a window state is valid

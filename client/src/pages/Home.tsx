@@ -11,6 +11,8 @@ import { Screensaver } from '@/components/Screensaver';
 import { Settings } from '@/components/Settings';
 import { Contact } from '@/components/Contact';
 import { useScreensaver } from '@/lib/screensaverContext';
+import { Account } from '@/components/Account';
+import { ToastProvider, ToastViewport } from '@/components/ui/use-toast';
 
 const Windows = memo(function Windows() {
   const { windowStates } = useWindowState();
@@ -25,6 +27,7 @@ const Windows = memo(function Windows() {
     clicker: windowStates?.clicker ?? { isOpen: false, zIndex: 0 },
     settings: windowStates?.settings ?? { isOpen: false, zIndex: 0 },
     contact: windowStates?.contact ?? { isOpen: false, zIndex: 0 },
+    account: windowStates?.account ?? { isOpen: false, zIndex: 0 },
   };
 
   return (
@@ -37,6 +40,7 @@ const Windows = memo(function Windows() {
       {safeWindowStates.clicker.isOpen && <Clicker />}
       {safeWindowStates.settings.isOpen && <Settings />}
       {safeWindowStates.contact.isOpen && <Contact />}
+      {safeWindowStates.account.isOpen && <Account />}
     </>
   );
 });
@@ -90,12 +94,15 @@ export default function Home() {
   }, [handleActivity, resetTimer]);
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
-      <Desktop />
-      <Windows />
-      {isScreensaverActive && (
-        <Screensaver onActivity={handleActivity} />
-      )}
-    </div>
+      <ToastProvider>
+        <div className="h-screen w-screen overflow-hidden">
+          <Desktop />
+          <Windows />
+          {isScreensaverActive && (
+            <Screensaver onActivity={handleActivity} />
+          )}
+        </div>
+        <ToastViewport />
+      </ToastProvider>
   );
 }
