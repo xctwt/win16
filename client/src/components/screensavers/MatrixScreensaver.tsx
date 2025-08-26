@@ -17,7 +17,7 @@ export function MatrixScreensaver({ onActivity }: { onActivity: () => void }) {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    
+
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
@@ -25,22 +25,25 @@ export function MatrixScreensaver({ onActivity }: { onActivity: () => void }) {
     const fontSize = 14;
     const columns = Math.floor(canvas.width / fontSize);
     const drops: number[] = [];
-    
+
     // Initialize drops at random positions
     for (let i = 0; i < columns; i++) {
-      drops[i] = Math.floor(Math.random() * canvas.height / fontSize);
+      drops[i] = Math.floor((Math.random() * canvas.height) / fontSize);
     }
 
     // Characters to display (can be customized)
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
-    
+    const chars =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789$+-*/=%\"'#&_(),.;:?!\\|{}<>[]^~";
+
     // Set color based on theme
     const getColor = () => {
-      return theme === 'dark' ? '#0f0' : '#006600';
+      return theme === "dark" ? "#0f0" : "#006600";
     };
-    
+
     const getBgColor = () => {
-      return theme === 'dark' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)';
+      return theme === "dark"
+        ? "rgba(0, 0, 0, 0.05)"
+        : "rgba(255, 255, 255, 0.05)";
     };
 
     // Animation loop
@@ -48,23 +51,23 @@ export function MatrixScreensaver({ onActivity }: { onActivity: () => void }) {
       // Semi-transparent background to create fade effect
       ctx.fillStyle = getBgColor();
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
+
       ctx.fillStyle = getColor();
       ctx.font = `${fontSize}px monospace`;
-      
+
       // Loop through each column
       for (let i = 0; i < drops.length; i++) {
         // Get random character
         const text = chars[Math.floor(Math.random() * chars.length)];
-        
+
         // Draw the character
         ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-        
+
         // Move drop down or reset to top
         if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
           drops[i] = 0;
         }
-        
+
         drops[i]++;
       }
     };
@@ -93,4 +96,4 @@ export function MatrixScreensaver({ onActivity }: { onActivity: () => void }) {
       <canvas ref={canvasRef} className="w-full h-full" />
     </div>
   );
-} 
+}

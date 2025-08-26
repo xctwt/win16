@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
-import { Window } from './Windows';
-import { Eraser, Paintbrush } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { HexColorPicker } from 'react-colorful';
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { Window } from "./Windows";
+import { Eraser, Paintbrush } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { HexColorPicker } from "react-colorful";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const CANVAS_SIZE = 256;
-const DEFAULT_COLORS = ['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+const DEFAULT_COLORS = [
+  "#ffffff",
+  "#ff0000",
+  "#00ff00",
+  "#0000ff",
+  "#ffff00",
+  "#ff00ff",
+  "#00ffff",
+];
 const MAX_RECENT_COLORS = 7;
 
 // Custom styles to remove border-radius from react-colorful
@@ -43,12 +51,14 @@ export const Paint = memo(function Paint() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasDrawing, setHasDrawing] = useState(false);
-  const [color, setColor] = useState('#ffffff');
-  const [recentColors, setRecentColors] = useState<string[]>(DEFAULT_COLORS.slice(0, 8));
-  const [tool, setTool] = useState<'brush' | 'eraser'>('brush');
+  const [color, setColor] = useState("#ffffff");
+  const [recentColors, setRecentColors] = useState<string[]>(
+    DEFAULT_COLORS.slice(0, 8),
+  );
+  const [tool, setTool] = useState<"brush" | "eraser">("brush");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [name, setName] = useState('');
-  const [author, setAuthor] = useState('');
+  const [name, setName] = useState("");
+  const [author, setAuthor] = useState("");
   const [brushSize, setBrushSize] = useState(2);
   const { toast } = useToast();
 
@@ -61,28 +71,33 @@ export const Paint = memo(function Paint() {
   // Handle color change from colorful, memoized to prevent unstable function
   const handleColorChange = useCallback((newColor: string) => {
     setColor(newColor);
-    setTool('brush');
+    setTool("brush");
   }, []);
 
   // Memoize the input change handler
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    handleColorChange(e.target.value);
-  }, [handleColorChange]);
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      handleColorChange(e.target.value);
+    },
+    [handleColorChange],
+  );
 
   // Add a color to recent colors list
   const addToRecentColors = (colorToAdd: string) => {
-    setRecentColors(prev => {
+    setRecentColors((prev) => {
       // Check if this color is already the most recent one
       if (prev[0]?.toLowerCase() === colorToAdd.toLowerCase()) {
         return prev;
       }
-      
+
       // Remove the color if it already exists to avoid duplicates
-      const filteredColors = prev.filter(c => c.toLowerCase() !== colorToAdd.toLowerCase());
-      
+      const filteredColors = prev.filter(
+        (c) => c.toLowerCase() !== colorToAdd.toLowerCase(),
+      );
+
       // Add the new color at the beginning
       const updatedColors = [colorToAdd, ...filteredColors];
-      
+
       // Keep only up to MAX_RECENT_COLORS
       return updatedColors.slice(0, MAX_RECENT_COLORS);
     });
@@ -92,10 +107,10 @@ export const Paint = memo(function Paint() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = '#000000';
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
     setHasDrawing(false);
   };
@@ -104,59 +119,71 @@ export const Paint = memo(function Paint() {
     initCanvas();
   }, []);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const startDrawing = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     setIsDrawing(true);
     setHasDrawing(true);
-    
+
     // If we're actually drawing (not erasing) with a color different from the last one used,
     // update the last drawn color and add it to recent colors
-    if (tool === 'brush' && color !== lastDrawnColor) {
+    if (tool === "brush" && color !== lastDrawnColor) {
       setLastDrawnColor(color);
       addToRecentColors(color);
     }
-    
+
     draw(e);
   };
 
   const stopDrawing = () => {
     setIsDrawing(false);
-    const ctx = canvasRef.current?.getContext('2d');
+    const ctx = canvasRef.current?.getContext("2d");
     if (ctx) {
       ctx.beginPath();
     }
   };
 
-  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const getCoordinates = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-    if ('touches' in e) {
+    if ("touches" in e) {
       const touch = e.touches[0];
       return {
         x: touch.clientX - rect.left,
-        y: touch.clientY - rect.top
+        y: touch.clientY - rect.top,
       };
     }
     return {
       x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      y: e.clientY - rect.top,
     };
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const draw = (
+    e:
+      | React.MouseEvent<HTMLCanvasElement>
+      | React.TouchEvent<HTMLCanvasElement>,
+  ) => {
     if (!isDrawing) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
     e.preventDefault();
     const { x, y } = getCoordinates(e);
 
-    ctx.strokeStyle = tool === 'eraser' ? '#000000' : color;
+    ctx.strokeStyle = tool === "eraser" ? "#000000" : color;
     ctx.lineWidth = brushSize;
-    ctx.lineCap = 'round';
+    ctx.lineCap = "round";
     ctx.lineTo(x, y);
     ctx.stroke();
     ctx.beginPath();
@@ -168,7 +195,7 @@ export const Paint = memo(function Paint() {
       toast({
         title: "Cannot save empty canvas",
         description: "Draw something first!",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -180,7 +207,7 @@ export const Paint = memo(function Paint() {
       toast({
         title: "Missing information",
         description: "Please provide both name and author",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
@@ -188,106 +215,115 @@ export const Paint = memo(function Paint() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const dataUrl = canvas.toDataURL('image/png');
-    const response = await fetch('/api/drawings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+    const dataUrl = canvas.toDataURL("image/png");
+    const response = await fetch("/api/drawings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         name,
         author,
-        image: dataUrl 
+        image: dataUrl,
       }),
     });
 
     if (response.ok) {
       toast({
         title: "Drawing saved",
-        description: "Your masterpiece has been saved!"
+        description: "Your masterpiece has been saved!",
       });
       setShowSaveDialog(false);
-      setName('');
-      setAuthor('');
+      setName("");
+      setAuthor("");
       initCanvas();
     }
   };
 
   // Memoize HexColorPicker style to prevent unstable object
-  const hexColorPickerStyle = useMemo(() => ({
-    width: '180px',
-    height: '180px'
-  }), []);
+  const hexColorPickerStyle = useMemo(
+    () => ({
+      width: "180px",
+      height: "180px",
+    }),
+    [],
+  );
 
   // Memoize HexColorPicker component
-  const memoizedHexColorPicker = useMemo(() => (
-    <HexColorPicker 
-      color={color} 
-      onChange={handleColorChange}
-      style={hexColorPickerStyle}
-    />
-  ), [color, handleColorChange, hexColorPickerStyle]);
+  const memoizedHexColorPicker = useMemo(
+    () => (
+      <HexColorPicker
+        color={color}
+        onChange={handleColorChange}
+        style={hexColorPickerStyle}
+      />
+    ),
+    [color, handleColorChange, hexColorPickerStyle],
+  );
 
   // Memoize Dialog component
-  const memoizedDialog = useMemo(() => (
-    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Save Drawing</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Drawing Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter drawing name..."
-            />
+  const memoizedDialog = useMemo(
+    () => (
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Drawing</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Drawing Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter drawing name..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="author">Author Name</Label>
+              <Input
+                id="author"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Enter author name..."
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="author">Author Name</Label>
-            <Input
-              id="author"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              placeholder="Enter author name..."
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <button className="cs-button" onClick={handleSave}>
-            Save
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  ), [showSaveDialog, name, author, handleSave]);
+          <DialogFooter>
+            <button className="cs-button" onClick={handleSave}>
+              Save
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    ),
+    [showSaveDialog, name, author, handleSave],
+  );
 
   return (
     <>
       {/* Add custom styles for react-colorful */}
       <style dangerouslySetInnerHTML={{ __html: customColorfulStyles }} />
-      
+
       <Window title="paint" windowId="paint" defaultPosition={defaultPosition}>
         <div className="space-y-4">
           <div className="flex gap-2 mb-2">
             <button
-              className={`cs-button ${tool === 'brush' ? 'border-cs-text' : ''}`}
-              onClick={() => setTool('brush')}
+              className={`cs-button ${tool === "brush" ? "border-cs-text" : ""}`}
+              onClick={() => setTool("brush")}
             >
               <Paintbrush className="w-4 h-4" />
             </button>
             <button
-              className={`cs-button ${tool === 'eraser' ? 'border-cs-text' : ''}`}
-              onClick={() => setTool('eraser')}
+              className={`cs-button ${tool === "eraser" ? "border-cs-text" : ""}`}
+              onClick={() => setTool("eraser")}
             >
               <Eraser className="w-4 h-4" />
             </button>
-            <div 
-              className="w-4 h-4 ml-auto border border-cs-border" 
+            <div
+              className="w-4 h-4 ml-auto border border-cs-border"
               style={{ backgroundColor: color }}
             />
           </div>
-          
+
           <div className="flex items-center gap-2">
             <input
               type="range"
@@ -316,16 +352,18 @@ export const Paint = memo(function Paint() {
               onTouchEnd={stopDrawing}
               onTouchMove={draw}
             />
-            
+
             <div className="flex-shrink-0 pt-1 space-y-3">
               {memoizedHexColorPicker}
               <div>
-                <div className="text-xs mb-1 text-cs-text-secondary">Recent Colors</div>
+                <div className="text-xs mb-1 text-cs-text-secondary">
+                  Recent Colors
+                </div>
                 <div className="grid grid-cols-8 gap-1">
                   {recentColors.map((c, i) => (
                     <button
                       key={`${c}-${i}`}
-                      className={`w-5 h-5 border ${color === c ? 'border-cs-text' : 'border-cs-border'}`}
+                      className={`w-5 h-5 border ${color === c ? "border-cs-text" : "border-cs-border"}`}
                       style={{ background: c }}
                       onClick={() => handleColorChange(c)}
                       title={c}
@@ -344,8 +382,8 @@ export const Paint = memo(function Paint() {
             </div>
           </div>
 
-          <button 
-            className={`cs-button w-full ${!hasDrawing ? 'opacity-50' : ''}`}
+          <button
+            className={`cs-button w-full ${!hasDrawing ? "opacity-50" : ""}`}
             onClick={saveDrawing}
           >
             Save Drawing

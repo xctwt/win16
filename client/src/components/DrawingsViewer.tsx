@@ -1,4 +1,3 @@
-// components/DrawingsViewer.tsx
 import { useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Window } from './Windows';

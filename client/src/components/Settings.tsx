@@ -1,4 +1,3 @@
-// components/Settings.tsx
 import { Window } from './Windows';
 import { useTheme } from '@/lib/themeContext';
 import { useOneko } from '@/lib/onekoContext';

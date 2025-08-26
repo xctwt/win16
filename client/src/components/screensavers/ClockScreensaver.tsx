@@ -3,7 +3,11 @@ import { useTheme } from "@/lib/themeContext";
 import { useScreensaver } from "@/lib/screensaverContext";
 import { MouseEvent, TouchEvent } from "react";
 
-export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => void }) {
+export function ClockScreensaver({
+  onActivity,
+}: {
+  onActivity: (e: Event) => void;
+}) {
   const [time, setTime] = useState(new Date());
   const { theme } = useTheme();
   const { clockPosition } = useScreensaver();
@@ -26,13 +30,13 @@ export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => voi
 
   // Clock position styles
   const getClockStyles = () => {
-    if (clockPosition === 'center') {
+    if (clockPosition === "center") {
       return {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         width: "100%",
-        height: "100%"
+        height: "100%",
       };
     } else {
       return {
@@ -41,7 +45,7 @@ export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => voi
         justifyContent: "flex-end",
         width: "100%",
         height: "100%",
-        padding: "20px"
+        padding: "20px",
       };
     }
   };
@@ -55,21 +59,27 @@ export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => voi
       onTouchStart={handleTouchActivity}
     >
       <div style={getClockStyles()}>
-        <div className={`${clockPosition === 'corner' ? 'text-right' : 'text-center'}`}>
-          <div 
-            className={clockPosition === 'center' ? "text-8xl font-mono" : "text-4xl font-mono"}
+        <div
+          className={`${clockPosition === "corner" ? "text-right" : "text-center"}`}
+        >
+          <div
+            className={
+              clockPosition === "center"
+                ? "text-8xl font-mono"
+                : "text-4xl font-mono"
+            }
             style={{ color: "var(--cs-text)" }}
           >
             {time.toLocaleTimeString()}
           </div>
-          <div 
-            className={`opacity-70 font-mono ${clockPosition === 'center' ? "text-xl mt-4" : "text-sm mt-2"}`}
+          <div
+            className={`opacity-70 font-mono ${clockPosition === "center" ? "text-xl mt-4" : "text-sm mt-2"}`}
             style={{ color: "var(--cs-text)" }}
           >
             {time.toLocaleDateString()}
           </div>
-          {clockPosition === 'center' && (
-            <div 
+          {clockPosition === "center" && (
+            <div
               className="text-sm mt-8 opacity-70"
               style={{ color: "var(--cs-text)" }}
             >
@@ -78,14 +88,14 @@ export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => voi
           )}
         </div>
       </div>
-      
-      {clockPosition === 'corner' && (
-        <div 
+
+      {clockPosition === "corner" && (
+        <div
           className="absolute text-sm opacity-70"
           style={{
             right: "20px",
             bottom: "20px",
-            color: "var(--cs-text)"
+            color: "var(--cs-text)",
           }}
         >
           Double click or press any key to exit
@@ -93,4 +103,4 @@ export function ClockScreensaver({ onActivity }: { onActivity: (e: Event) => voi
       )}
     </div>
   );
-} 
+}

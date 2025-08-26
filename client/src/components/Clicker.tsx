@@ -1,5 +1,13 @@
-import { useState, useEffect, useRef, useCallback, useMemo, useReducer, memo } from 'react';
-import { Window } from './Windows';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useReducer,
+  memo,
+} from "react";
+import { Window } from "./Windows";
 import {
   Sparkles,
   Trophy,
@@ -8,31 +16,31 @@ import {
   Clock,
   Zap,
   ArrowUp,
-} from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+} from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
-import crypto from 'crypto-js';
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
+import crypto from "crypto-js";
 
-type Tab = 'game' | 'scores';
+type Tab = "game" | "scores";
 type Score = {
   name: string;
   score: number;
@@ -53,74 +61,85 @@ type ClickAnimationData = {
 
 // Prestige levels and their colors
 const PRESTIGE_LEVELS = [
-  { name: 'None', color: 'text-foreground' },
-  { name: 'Bronze', color: 'text-amber-600' },
-  { name: 'Silver', color: 'text-gray-300' },
-  { name: 'Gold', color: 'text-yellow-400' },
-  { name: 'Platinum', color: 'text-cyan-200' },
-  { name: 'Diamond', color: 'text-blue-300' },
-  { name: 'Master', color: 'text-purple-400' },
-  { name: 'Grandmaster', color: 'text-red-500' },
+  { name: "None", color: "text-foreground" },
+  { name: "Bronze", color: "text-amber-600" },
+  { name: "Silver", color: "text-gray-300" },
+  { name: "Gold", color: "text-yellow-400" },
+  { name: "Platinum", color: "text-cyan-200" },
+  { name: "Diamond", color: "text-blue-300" },
+  { name: "Master", color: "text-purple-400" },
+  { name: "Grandmaster", color: "text-red-500" },
 ];
 
 // Animation for click effects
-function ClickAnimation({ value, x, y, isCritical = false }: { value: number; x: number; y: number; isCritical?: boolean }) {
+function ClickAnimation({
+  value,
+  x,
+  y,
+  isCritical = false,
+}: {
+  value: number;
+  x: number;
+  y: number;
+  isCritical?: boolean;
+}) {
   const [opacity, setOpacity] = useState(1);
   const [posY, setPosY] = useState(y);
   const [posX, setPosX] = useState(x);
   const [scale, setScale] = useState(1);
-  
+
   // Generate random values for this specific animation instance
   const randomFactors = useRef({
-    xSpeed: Math.random() * 2 - 1,  // Random value between -1 and 1
-    ySpeed: -(Math.random() * 0.5 + 0.5),  // Random upward speed
-    wobble: Math.random() * 6 + 2,  // Random wobble frequency
-    wobbleAmount: Math.random() * 15 + 5,  // Random wobble amount
-    path: Math.floor(Math.random() * 3)  // Random path type (0, 1, or 2)
+    xSpeed: Math.random() * 2 - 1, // Random value between -1 and 1
+    ySpeed: -(Math.random() * 0.5 + 0.5), // Random upward speed
+    wobble: Math.random() * 6 + 2, // Random wobble frequency
+    wobbleAmount: Math.random() * 15 + 5, // Random wobble amount
+    path: Math.floor(Math.random() * 3), // Random path type (0, 1, or 2)
   });
 
   useEffect(() => {
     // Use requestAnimationFrame for smoother animation
     let animationFrameId: number;
     let startTime = performance.now();
-    
+
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       // Complete animation in 800ms
       const progress = Math.min(elapsed / 800, 1);
-      
+
       setOpacity(1 - progress);
-      
+
       // Apply different movement patterns based on random path type
-      const { xSpeed, ySpeed, wobble, wobbleAmount, path } = randomFactors.current;
-      
+      const { xSpeed, ySpeed, wobble, wobbleAmount, path } =
+        randomFactors.current;
+
       // Base vertical movement (always goes up)
-      const baseYMovement = y + (ySpeed * progress * 100);
-      
+      const baseYMovement = y + ySpeed * progress * 100;
+
       // Different horizontal movement patterns
       let newX;
       if (path === 0) {
         // Zigzag pattern
-        newX = x + (Math.sin(progress * wobble) * wobbleAmount);
+        newX = x + Math.sin(progress * wobble) * wobbleAmount;
       } else if (path === 1) {
         // Curved path
-        newX = x + (xSpeed * progress * 40);
+        newX = x + xSpeed * progress * 40;
       } else {
         // Spiral-like
-        newX = x + (Math.sin(progress * wobble) * wobbleAmount * (1 - progress));
+        newX = x + Math.sin(progress * wobble) * wobbleAmount * (1 - progress);
       }
-      
+
       setPosY(baseYMovement);
       setPosX(newX);
       setScale(1 + progress * 0.5); // Grow slightly as it rises
-      
+
       if (progress < 1) {
         animationFrameId = requestAnimationFrame(animate);
       }
     };
-    
+
     animationFrameId = requestAnimationFrame(animate);
-    
+
     return () => cancelAnimationFrame(animationFrameId);
   }, [x, y]);
 
@@ -129,7 +148,7 @@ function ClickAnimation({ value, x, y, isCritical = false }: { value: number; x:
   return (
     <div
       className={`fixed pointer-events-none font-bold ${
-        isCritical ? 'text-yellow-400 dark:text-yellow-400' : 'text-foreground'
+        isCritical ? "text-yellow-400 dark:text-yellow-400" : "text-foreground"
       }`}
       style={{
         left: posX,
@@ -137,8 +156,10 @@ function ClickAnimation({ value, x, y, isCritical = false }: { value: number; x:
         opacity,
         transform: `scale(${isCritical ? 1.5 * scale : scale})`,
         zIndex: 10000,
-        textShadow: isCritical ? '0 0 8px rgba(255, 215, 0, 0.8)' : '0 0 4px rgba(128, 128, 128, 0.5)',
-        fontSize: '16px',
+        textShadow: isCritical
+          ? "0 0 8px rgba(255, 215, 0, 0.8)"
+          : "0 0 4px rgba(128, 128, 128, 0.5)",
+        fontSize: "16px",
       }}
     >
       +{value}
@@ -151,31 +172,32 @@ export const Clicker = memo(function Clicker() {
   const [multiplier, setMultiplier] = useState(1);
   const [autoClickerCount, setAutoClickerCount] = useState(0);
   const [autoClickerFrequency, setAutoClickerFrequency] = useState(1); // clicks per second
-  const [activeTab, setActiveTab] = useState<Tab>('game');
+  const [activeTab, setActiveTab] = useState<Tab>("game");
   const [showSaveDialog, setShowSaveDialog] = useState(false);
-  const [playerName, setPlayerName] = useState('');
-  const [selectedSeason, setSelectedSeason] = useState<string>('current');
+  const [playerName, setPlayerName] = useState("");
+  const [selectedSeason, setSelectedSeason] = useState<string>("current");
   const [prestige, setPrestige] = useState(0);
   const [criticalChance, setCriticalChance] = useState(0.05); // 5% base chance
   const [criticalMultiplier, setCriticalMultiplier] = useState(5); // 5x base critical multiplier
-  
+
   // Replaced useState with useReducer for clickAnimations
   const [clickAnimations, dispatchClickAnimations] = useReducer(
     (state: ClickAnimationData[], action: { type: string; payload: any }) => {
       switch (action.type) {
-        case 'ADD_ANIMATION':
+        case "ADD_ANIMATION":
           return [...state, action.payload];
-        case 'REMOVE_ANIMATION':
-          return state.filter(anim => anim.id !== action.payload.id);
-        case 'REMOVE_OLD_ANIMATIONS':
-          return state.filter(anim => 
-            anim.timestamp && anim.timestamp > action.payload.timestamp
+        case "REMOVE_ANIMATION":
+          return state.filter((anim) => anim.id !== action.payload.id);
+        case "REMOVE_OLD_ANIMATIONS":
+          return state.filter(
+            (anim) =>
+              anim.timestamp && anim.timestamp > action.payload.timestamp,
           );
         default:
           return state;
       }
     },
-    []
+    [],
   );
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -186,24 +208,33 @@ export const Clicker = memo(function Clicker() {
   const defaultPosition = useMemo(() => ({ x: 75, y: 130 }), []);
 
   // Calculate current prestige level
-  const currentPrestigeLevel = useMemo(() => Math.min(prestige, PRESTIGE_LEVELS.length - 1), [prestige]);
-  
+  const currentPrestigeLevel = useMemo(
+    () => Math.min(prestige, PRESTIGE_LEVELS.length - 1),
+    [prestige],
+  );
+
   // Memoize prestige-related values
-  const prestigeColor = useMemo(() => PRESTIGE_LEVELS[currentPrestigeLevel].color, [currentPrestigeLevel]);
-  const prestigeName = useMemo(() => PRESTIGE_LEVELS[currentPrestigeLevel].name, [currentPrestigeLevel]);
+  const prestigeColor = useMemo(
+    () => PRESTIGE_LEVELS[currentPrestigeLevel].color,
+    [currentPrestigeLevel],
+  );
+  const prestigeName = useMemo(
+    () => PRESTIGE_LEVELS[currentPrestigeLevel].name,
+    [currentPrestigeLevel],
+  );
 
   // Memoized formatCount function
   const formatCount = useCallback((num: number | null | undefined): string => {
     // Handle null or undefined values
     if (num === null || num === undefined) {
-      console.warn('Attempted to format null or undefined number');
-      return '0';
+      console.warn("Attempted to format null or undefined number");
+      return "0";
     }
 
     // Handle NaN
     if (isNaN(num)) {
-      console.warn('Attempted to format NaN');
-      return '0';
+      console.warn("Attempted to format NaN");
+      return "0";
     }
 
     if (num > 99000000) {
@@ -214,11 +245,11 @@ export const Clicker = memo(function Clicker() {
 
   // Helper function to get the appropriate CSS class for a score's color
   const getScoreColorClass = useCallback((scoreColor?: string): string => {
-    if (!scoreColor) return '';
+    if (!scoreColor) return "";
 
     // Handle the theme-adaptive color
-    if (scoreColor === 'theme-adaptive') {
-      return 'text-foreground';
+    if (scoreColor === "theme-adaptive") {
+      return "text-foreground";
     }
 
     return `text-${scoreColor}`;
@@ -235,22 +266,22 @@ export const Clicker = memo(function Clicker() {
       token?: string;
     }) => {
       // Log the data being sent
-      console.log('Sending score data to server:', {
+      console.log("Sending score data to server:", {
         ...data,
-        token: data.token ? data.token.substring(0, 10) + '...' : undefined,
+        token: data.token ? data.token.substring(0, 10) + "..." : undefined,
       });
 
-      const response = await fetch('/api/scores', {
-        method: 'POST',
+      const response = await fetch("/api/scores", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Error saving score');
+        throw new Error(errorData.error || "Error saving score");
       }
 
       return response.json();
@@ -258,18 +289,18 @@ export const Clicker = memo(function Clicker() {
     onSuccess: () => {
       setShowSaveDialog(false);
       toast({
-        title: 'Score saved!',
-        description: 'Your score has been saved to the leaderboard.',
+        title: "Score saved!",
+        description: "Your score has been saved to the leaderboard.",
       });
-      queryClient.invalidateQueries({ queryKey: ['scores'] });
+      queryClient.invalidateQueries({ queryKey: ["scores"] });
     },
     onError: (error: Error) => {
-      console.error('Error saving score:', error);
+      console.error("Error saving score:", error);
       toast({
-        title: 'Error saving score',
+        title: "Error saving score",
         description:
-          error.message || 'Failed to save your score. Please try again.',
-        variant: 'destructive',
+          error.message || "Failed to save your score. Please try again.",
+        variant: "destructive",
       });
     },
   });
@@ -280,16 +311,20 @@ export const Clicker = memo(function Clicker() {
   }, []);
 
   const generateVerificationToken = useCallback(
-    (name: string, score: number, prestige: number): { timestamp: number, token: string } => {
+    (
+      name: string,
+      score: number,
+      prestige: number,
+    ): { timestamp: number; token: string } => {
       const timestamp = Date.now();
       // Match the server's token format: hash(timestamp:score)
       const tokenData = `${timestamp}:${score}`;
       return {
         timestamp,
-        token: hashString(tokenData)
+        token: hashString(tokenData),
       };
     },
-    [hashString]
+    [hashString],
   );
 
   const resetGame = useCallback(() => {
@@ -301,27 +336,34 @@ export const Clicker = memo(function Clicker() {
     setCriticalMultiplier(5);
     setShowSaveDialog(false);
     toast({
-      title: 'Game Reset',
-      description: 'Your game has been reset. Starting fresh!',
+      title: "Game Reset",
+      description: "Your game has been reset. Starting fresh!",
     });
   }, [toast]);
 
   const handleSaveScore = useCallback(async () => {
     if (!playerName.trim()) {
       toast({
-        title: 'Name Required',
-        description: 'Please enter your name to save your score.',
-        variant: 'destructive',
+        title: "Name Required",
+        description: "Please enter your name to save your score.",
+        variant: "destructive",
       });
       return;
     }
 
     try {
-      const { timestamp, token } = generateVerificationToken(playerName, count, prestige);
-      
+      const { timestamp, token } = generateVerificationToken(
+        playerName,
+        count,
+        prestige,
+      );
+
       const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
-      const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace('text-', '');
-      
+      const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace(
+        "text-",
+        "",
+      );
+
       const submissionData = {
         name: playerName,
         score: count,
@@ -331,45 +373,54 @@ export const Clicker = memo(function Clicker() {
         token,
       };
 
-      console.log('Submitting score:', {
+      console.log("Submitting score:", {
         ...submissionData,
-        token: token.substring(0, 10) + '...',
+        token: token.substring(0, 10) + "...",
       });
 
       await saveScoreMutation.mutateAsync(submissionData);
-      
+
       // Reset game after successful submission
       resetGame();
       // saveScoreMutation handles the error toast
     } catch (error) {
-      console.error('Error in handleSaveScore:', error);
+      console.error("Error in handleSaveScore:", error);
     }
-  }, [playerName, count, prestige, generateVerificationToken, saveScoreMutation, resetGame, toast]);
+  }, [
+    playerName,
+    count,
+    prestige,
+    generateVerificationToken,
+    saveScoreMutation,
+    resetGame,
+    toast,
+  ]);
 
   // Fetch seasons
-  const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } = useQuery({
-    queryKey: ['seasons'],
-    queryFn: async () => {
-      try {
-        const response = await fetch('/api/seasons');
-        const data = await response.json();
+  const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } =
+    useQuery({
+      queryKey: ["seasons"],
+      queryFn: async () => {
+        try {
+          const response = await fetch("/api/seasons");
+          const data = await response.json();
 
-        // If we're on 'current', update to show what the current season actually is
-        if (selectedSeason === 'current' && data.currentSeason) {
-          setSelectedSeason(data.currentSeason.toString());
+          // If we're on 'current', update to show what the current season actually is
+          if (selectedSeason === "current" && data.currentSeason) {
+            setSelectedSeason(data.currentSeason.toString());
+          }
+
+          return data;
+        } catch (error) {
+          console.error("Error fetching seasons:", error);
+          return { seasons: [1, 2], currentSeason: 2 };
         }
-
-        return data;
-      } catch (error) {
-        console.error('Error fetching seasons:', error);
-        return { seasons: [1, 2], currentSeason: 2 };
-      }
-    },
-  });
+      },
+    });
 
   // Fetch high scores
   const { data: highScores = [] } = useQuery<Score[]>({
-    queryKey: ['highScores', selectedSeason],
+    queryKey: ["highScores", selectedSeason],
     queryFn: async () => {
       const response = await fetch(`/api/scores?season=${selectedSeason}`);
       const data = await response.json();
@@ -393,12 +444,15 @@ export const Clicker = memo(function Clicker() {
 
   // Memoized autoClickerHandler
   const autoClickerHandler = useCallback(() => {
-    setCount(c => c + autoClickerCount * multiplier);
+    setCount((c) => c + autoClickerCount * multiplier);
   }, [autoClickerCount, multiplier]);
 
   useEffect(() => {
     if (autoClickerCount > 0) {
-      const interval = setInterval(autoClickerHandler, 1000 / autoClickerFrequency);
+      const interval = setInterval(
+        autoClickerHandler,
+        1000 / autoClickerFrequency,
+      );
       return () => clearInterval(interval);
     }
   }, [autoClickerHandler, autoClickerFrequency, autoClickerCount]);
@@ -410,8 +464,8 @@ export const Clicker = memo(function Clicker() {
       const timer = setTimeout(() => {
         // Use the reducer to filter out old animations
         dispatchClickAnimations({
-          type: 'REMOVE_OLD_ANIMATIONS',
-          payload: { timestamp: now - 1000 }
+          type: "REMOVE_OLD_ANIMATIONS",
+          payload: { timestamp: now - 1000 },
         });
       }, 100); // Adjust as needed
       return () => clearTimeout(timer);
@@ -423,10 +477,12 @@ export const Clicker = memo(function Clicker() {
     (e?: React.MouseEvent) => {
       // Determine if it's a critical hit
       const isCritical = Math.random() < criticalChance;
-      const clickValue = isCritical ? multiplier * criticalMultiplier : multiplier;
+      const clickValue = isCritical
+        ? multiplier * criticalMultiplier
+        : multiplier;
 
       // Add the value to the score
-      setCount(c => c + clickValue);
+      setCount((c) => c + clickValue);
 
       // Get click position
       let x, y;
@@ -454,7 +510,7 @@ export const Clicker = memo(function Clicker() {
         // For small critical hits (< 10), just show one big number
         if (clickValue < 10) {
           dispatchClickAnimations({
-            type: 'ADD_ANIMATION',
+            type: "ADD_ANIMATION",
             payload: {
               id: baseId + Math.random(),
               value: clickValue,
@@ -467,7 +523,10 @@ export const Clicker = memo(function Clicker() {
         } else {
           // For larger critical hits, show multiple particles
           const baseParticleCount = 3;
-          const maxExtraParticles = Math.min(4, Math.floor(Math.log10(clickValue)));
+          const maxExtraParticles = Math.min(
+            4,
+            Math.floor(Math.log10(clickValue)),
+          );
           const particleCount = baseParticleCount + maxExtraParticles;
 
           const newAnimations: ClickAnimationData[] = [];
@@ -492,7 +551,9 @@ export const Clicker = memo(function Clicker() {
             // This ensures even small crits (like 5) won't show tiny numbers
             const minValue = Math.max(2, Math.floor(clickValue * 0.25));
             const maxValue = Math.floor(clickValue * 0.75);
-            const particleValue = Math.floor(Math.random() * (maxValue - minValue + 1) + minValue);
+            const particleValue = Math.floor(
+              Math.random() * (maxValue - minValue + 1) + minValue,
+            );
 
             newAnimations.push({
               id: baseId + i + Math.random(),
@@ -504,9 +565,9 @@ export const Clicker = memo(function Clicker() {
             });
           }
 
-          newAnimations.forEach(anim => {
+          newAnimations.forEach((anim) => {
             dispatchClickAnimations({
-              type: 'ADD_ANIMATION',
+              type: "ADD_ANIMATION",
               payload: anim,
             });
           });
@@ -533,7 +594,9 @@ export const Clicker = memo(function Clicker() {
             const offsetY = Math.random() * 20 - 10;
 
             // For non-critical secondary particles, show 33-66% of the main value
-            const particleValue = Math.floor(clickValue * (0.33 + Math.random() * 0.33));
+            const particleValue = Math.floor(
+              clickValue * (0.33 + Math.random() * 0.33),
+            );
 
             newAnimations.push({
               id: baseId + i + Math.random(),
@@ -546,68 +609,86 @@ export const Clicker = memo(function Clicker() {
           }
         }
 
-        newAnimations.forEach(anim => {
+        newAnimations.forEach((anim) => {
           dispatchClickAnimations({
-            type: 'ADD_ANIMATION',
+            type: "ADD_ANIMATION",
             payload: anim,
           });
         });
       }
     },
-    [multiplier, criticalChance, criticalMultiplier, dispatchClickAnimations, setCount, buttonRef]
+    [
+      multiplier,
+      criticalChance,
+      criticalMultiplier,
+      dispatchClickAnimations,
+      setCount,
+      buttonRef,
+    ],
   );
 
   // Memoized cost calculations
-  const multiplierCost = useMemo(() => Math.floor(multiplier * 100 * Math.pow(1.2, multiplier)), [multiplier]);
+  const multiplierCost = useMemo(
+    () => Math.floor(multiplier * 100 * Math.pow(1.2, multiplier)),
+    [multiplier],
+  );
   const autoClickerCost = useMemo(
-    () => Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount)),
-    [autoClickerCount]
+    () =>
+      Math.floor((autoClickerCount + 1) * 50 * Math.pow(1.3, autoClickerCount)),
+    [autoClickerCount],
   );
   const autoClickerFrequencyCost = useMemo(
-    () => Math.floor(autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency)),
-    [autoClickerFrequency]
+    () =>
+      Math.floor(
+        autoClickerFrequency * 200 * Math.pow(2, autoClickerFrequency),
+      ),
+    [autoClickerFrequency],
   );
   const critChanceCost = useMemo(
-    () => Math.floor(criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)),
-    [criticalChance]
+    () =>
+      Math.floor(criticalChance * 10000 * Math.pow(1.5, criticalChance * 10)),
+    [criticalChance],
   );
   const critMultiplierCost = useMemo(
-    () => Math.floor(criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5)),
-    [criticalMultiplier]
+    () =>
+      Math.floor(
+        criticalMultiplier * 300 * Math.pow(1.4, criticalMultiplier - 5),
+      ),
+    [criticalMultiplier],
   );
 
   const buyMultiplier = useCallback(() => {
     if (count >= multiplierCost) {
-      setCount(c => c - multiplierCost);
-      setMultiplier(m => m + 1);
+      setCount((c) => c - multiplierCost);
+      setMultiplier((m) => m + 1);
     }
   }, [count, multiplierCost]);
 
   const buyAutoClicker = useCallback(() => {
     if (count >= autoClickerCost) {
-      setCount(c => c - autoClickerCost);
-      setAutoClickerCount(ac => ac + 1);
+      setCount((c) => c - autoClickerCost);
+      setAutoClickerCount((ac) => ac + 1);
     }
   }, [count, autoClickerCost]);
 
   const upgradeAutoClickerFrequency = useCallback(() => {
     if (count >= autoClickerFrequencyCost) {
-      setCount(c => c - autoClickerFrequencyCost);
-      setAutoClickerFrequency(freq => freq + 0.5);
+      setCount((c) => c - autoClickerFrequencyCost);
+      setAutoClickerFrequency((freq) => freq + 0.5);
     }
   }, [count, autoClickerFrequencyCost]);
 
   const upgradeCriticalChance = useCallback(() => {
     if (count >= critChanceCost && criticalChance < 0.5) {
-      setCount(c => c - critChanceCost);
-      setCriticalChance(cc => Math.min(cc + 0.05, 0.5)); // Cap at 50%
+      setCount((c) => c - critChanceCost);
+      setCriticalChance((cc) => Math.min(cc + 0.05, 0.5)); // Cap at 50%
     }
   }, [count, critChanceCost, criticalChance]);
 
   const upgradeCriticalMultiplier = useCallback(() => {
     if (count >= critMultiplierCost) {
-      setCount(c => c - critMultiplierCost);
-      setCriticalMultiplier(cm => cm + 1);
+      setCount((c) => c - critMultiplierCost);
+      setCriticalMultiplier((cm) => cm + 1);
     }
   }, [count, critMultiplierCost]);
 
@@ -622,11 +703,11 @@ export const Clicker = memo(function Clicker() {
 
     if (count < prestigeCost) {
       toast({
-        title: 'Not enough points',
+        title: "Not enough points",
         description: `You need at least ${formatCount(
-          prestigeCost
+          prestigeCost,
         )} points to prestige.`,
-        variant: 'destructive',
+        variant: "destructive",
       });
       return;
     }
@@ -644,7 +725,7 @@ export const Clicker = memo(function Clicker() {
     setCriticalMultiplier(5 + newPrestige); // Prestige bonus
 
     toast({
-      title: 'Prestige Level Up!',
+      title: "Prestige Level Up!",
       description: `You are now ${
         PRESTIGE_LEVELS[Math.min(newPrestige, PRESTIGE_LEVELS.length - 1)].name
       } prestige!`,
@@ -656,69 +737,84 @@ export const Clicker = memo(function Clicker() {
       setShowSaveDialog(true);
     } else {
       toast({
-        title: 'Nothing to save',
-        description: 'Score is 0. Game reset.',
-        variant: 'destructive',
+        title: "Nothing to save",
+        description: "Score is 0. Game reset.",
+        variant: "destructive",
       });
       resetGame();
     }
   }, [count, resetGame, toast]);
 
   // Memoized save dialog
-  const saveDialog = useMemo(() => (
-    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Save Your Score</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Your Name</Label>
-            <Input
-              id="name"
-              value={playerName}
-              onChange={e => setPlayerName(e.target.value)}
-              placeholder="Enter your name"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className={`text-lg ${prestigeColor}`}>
-              Score: {formatCount(count)}
-            </p>
-            {prestige > 0 && (
-              <p className={`text-sm ${prestigeColor}`}>
-                Prestige Level: {prestigeName}
+  const saveDialog = useMemo(
+    () => (
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Your Score</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Your Name</Label>
+              <Input
+                id="name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                placeholder="Enter your name"
+              />
+            </div>
+            <div className="space-y-2">
+              <p className={`text-lg ${prestigeColor}`}>
+                Score: {formatCount(count)}
               </p>
-            )}
+              {prestige > 0 && (
+                <p className={`text-sm ${prestigeColor}`}>
+                  Prestige Level: {prestigeName}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-        <DialogFooter>
-          <button
-            className="cs-button"
-            onClick={handleSaveScore}
-            disabled={saveScoreMutation.isPending}
-          >
-            {saveScoreMutation.isPending ? 'Saving...' : 'Save Score'}
-          </button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  ), [
-    showSaveDialog,
-    setShowSaveDialog,
-    playerName,
-    prestigeColor,
-    count,
-    prestige,
-    prestigeName,
-    handleSaveScore,
-    saveScoreMutation.isPending,
-  ]);
+          <DialogFooter>
+            <button
+              className="cs-button"
+              onClick={handleSaveScore}
+              disabled={saveScoreMutation.isPending}
+            >
+              {saveScoreMutation.isPending ? "Saving..." : "Save Score"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    ),
+    [
+      showSaveDialog,
+      setShowSaveDialog,
+      playerName,
+      prestigeColor,
+      count,
+      prestige,
+      prestigeName,
+      handleSaveScore,
+      saveScoreMutation.isPending,
+    ],
+  );
 
-  const MemoizedSparklesLarge = useMemo(() => <Sparkles className="w-6 h-6" />, []);
-  const MemoizedSparklesSmall = useMemo(() => <Sparkles className="w-4 h-4" />, []);
-  const MemoizedCrownSmall = useMemo(() => <Crown className="w-4 h-4 inline mr-1" />, []);
-  const MemoizedRotateCcw = useMemo(() => <RotateCcw className="w-4 h-4" />, []);
+  const MemoizedSparklesLarge = useMemo(
+    () => <Sparkles className="w-6 h-6" />,
+    [],
+  );
+  const MemoizedSparklesSmall = useMemo(
+    () => <Sparkles className="w-4 h-4" />,
+    [],
+  );
+  const MemoizedCrownSmall = useMemo(
+    () => <Crown className="w-4 h-4 inline mr-1" />,
+    [],
+  );
+  const MemoizedRotateCcw = useMemo(
+    () => <RotateCcw className="w-4 h-4" />,
+    [],
+  );
 
   return (
     <>
@@ -728,7 +824,13 @@ export const Clicker = memo(function Clicker() {
         style={{ zIndex: 10000 }}
       >
         {clickAnimations.map((anim: ClickAnimationData) => (
-          <ClickAnimation key={anim.id} value={anim.value} x={anim.x} y={anim.y} isCritical={anim.isCritical} />
+          <ClickAnimation
+            key={anim.id}
+            value={anim.value}
+            x={anim.x}
+            y={anim.y}
+            isCritical={anim.isCritical}
+          />
         ))}
       </div>
 
@@ -737,31 +839,31 @@ export const Clicker = memo(function Clicker() {
         windowId="clicker"
         defaultPosition={defaultPosition}
       >
-        <div className="space-y-4 p-4" style={{ width: '300px' }}>
+        <div className="space-y-4 p-4" style={{ width: "300px" }}>
           <div className="flex gap-2 mb-4">
             <button
               className={`cs-button flex-1 ${
-                activeTab === 'game'
-                  ? 'border-[var(--cs-text)]'
-                  : 'border-[var(--cs-border)]'
+                activeTab === "game"
+                  ? "border-[var(--cs-text)]"
+                  : "border-[var(--cs-border)]"
               }`}
-              onClick={() => setActiveTab('game')}
+              onClick={() => setActiveTab("game")}
             >
               Game
             </button>
             <button
               className={`cs-button flex-1 ${
-                activeTab === 'scores'
-                  ? 'border-[var(--cs-text)]'
-                  : 'border-[var(--cs-border)]'
+                activeTab === "scores"
+                  ? "border-[var(--cs-text)]"
+                  : "border-[var(--cs-border)]"
               }`}
-              onClick={() => setActiveTab('scores')}
+              onClick={() => setActiveTab("scores")}
             >
               Leaderboard
             </button>
           </div>
 
-          {activeTab === 'game' ? (
+          {activeTab === "game" ? (
             <>
               <div className="text-center relative">
                 <div className="absolute top-0 right-0">
@@ -772,10 +874,12 @@ export const Clicker = memo(function Clicker() {
                     </div>
                   )}
                 </div>
-                <h2 className={`text-2xl font-bold ${prestigeColor}`}>{formatCount(count)}</h2>
+                <h2 className={`text-2xl font-bold ${prestigeColor}`}>
+                  {formatCount(count)}
+                </h2>
                 <p className="text-sm text-gray-400">
-                  Multiplier: x{multiplier} | Auto-clickers: {autoClickerCount} (
-                  {autoClickerFrequency.toFixed(1)}/s)
+                  Multiplier: x{multiplier} | Auto-clickers: {autoClickerCount}{" "}
+                  ({autoClickerFrequency.toFixed(1)}/s)
                 </p>
                 <p className="text-xs text-gray-400">
                   Critical: {Math.round(criticalChance * 100)}% chance for x
@@ -794,7 +898,7 @@ export const Clicker = memo(function Clicker() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  className={`cs-button ${count < multiplierCost ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < multiplierCost ? "opacity-50" : ""}`}
                   onClick={buyMultiplier}
                   disabled={count < multiplierCost}
                 >
@@ -808,7 +912,7 @@ export const Clicker = memo(function Clicker() {
                 </button>
 
                 <button
-                  className={`cs-button ${count < autoClickerCost ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < autoClickerCost ? "opacity-50" : ""}`}
                   onClick={buyAutoClicker}
                   disabled={count < autoClickerCost}
                 >
@@ -822,7 +926,7 @@ export const Clicker = memo(function Clicker() {
                 </button>
 
                 <button
-                  className={`cs-button ${count < autoClickerFrequencyCost ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < autoClickerFrequencyCost ? "opacity-50" : ""}`}
                   onClick={upgradeAutoClickerFrequency}
                   disabled={
                     count < autoClickerFrequencyCost || autoClickerCount === 0
@@ -838,7 +942,7 @@ export const Clicker = memo(function Clicker() {
                 </button>
 
                 <button
-                  className={`cs-button ${count < critChanceCost || criticalChance >= 0.5 ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < critChanceCost || criticalChance >= 0.5 ? "opacity-50" : ""}`}
                   onClick={upgradeCriticalChance}
                   disabled={count < critChanceCost || criticalChance >= 0.5}
                 >
@@ -847,12 +951,14 @@ export const Clicker = memo(function Clicker() {
                     <span>Crit Chance</span>
                   </div>
                   <span className="block text-sm">
-                    {criticalChance >= 0.45 ? 'Sold Out' : formatCount(critChanceCost)}
+                    {criticalChance >= 0.45
+                      ? "Sold Out"
+                      : formatCount(critChanceCost)}
                   </span>
                 </button>
 
                 <button
-                  className={`cs-button ${count < critMultiplierCost ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < critMultiplierCost ? "opacity-50" : ""}`}
                   onClick={upgradeCriticalMultiplier}
                   disabled={count < critMultiplierCost}
                 >
@@ -866,7 +972,7 @@ export const Clicker = memo(function Clicker() {
                 </button>
 
                 <button
-                  className={`cs-button ${count < getPrestigeCost(prestige) ? 'opacity-50' : ''}`}
+                  className={`cs-button ${count < getPrestigeCost(prestige) ? "opacity-50" : ""}`}
                   onClick={performPrestige}
                   disabled={count < getPrestigeCost(prestige)}
                 >
@@ -874,7 +980,9 @@ export const Clicker = memo(function Clicker() {
                     <Crown className="w-4 h-4" />
                     <span>Prestige</span>
                   </div>
-                  <span className="block text-sm">{formatCount(getPrestigeCost(prestige))}</span>
+                  <span className="block text-sm">
+                    {formatCount(getPrestigeCost(prestige))}
+                  </span>
                 </button>
               </div>
 
@@ -889,7 +997,10 @@ export const Clicker = memo(function Clicker() {
           ) : (
             <>
               <div className="mb-4">
-                <Select value={selectedSeason} onValueChange={setSelectedSeason}>
+                <Select
+                  value={selectedSeason}
+                  onValueChange={setSelectedSeason}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Season">
                       {`Season ${selectedSeason}`}
@@ -898,7 +1009,10 @@ export const Clicker = memo(function Clicker() {
                   <SelectContent>
                     {seasonsData?.seasons?.map((season: number) => (
                       <SelectItem key={season} value={season.toString()}>
-                        Season {season} {season === seasonsData.currentSeason ? '(Current)' : ''}
+                        Season {season}{" "}
+                        {season === seasonsData.currentSeason
+                          ? "(Current)"
+                          : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -913,8 +1027,12 @@ export const Clicker = memo(function Clicker() {
                       className="flex justify-between items-center border border-cs-border p-2"
                     >
                       <div className="flex items-center gap-2 overflow-hidden">
-                        <span className="font-bold min-w-[32px]">#{index + 1}</span>
-                        <span className={`truncate ${getScoreColorClass(score.color)}`}>
+                        <span className="font-bold min-w-[32px]">
+                          #{index + 1}
+                        </span>
+                        <span
+                          className={`truncate ${getScoreColorClass(score.color)}`}
+                        >
                           {score.prestige && score.prestige > 0 ? (
                             <Crown className="w-3 h-3 inline mr-1" />
                           ) : null}
@@ -922,15 +1040,19 @@ export const Clicker = memo(function Clicker() {
                         </span>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className={`font-bold ${getScoreColorClass(score.color)}`}>
-                          {score && score.score !== undefined && score.score !== null 
-                            ? formatCount(score.score) 
-                            : '0'}
+                        <div
+                          className={`font-bold ${getScoreColorClass(score.color)}`}
+                        >
+                          {score &&
+                          score.score !== undefined &&
+                          score.score !== null
+                            ? formatCount(score.score)
+                            : "0"}
                         </div>
                         <div className="text-xs text-gray-400">
-                          {score && score.date 
-                            ? new Date(score.date).toLocaleDateString() 
-                            : 'Unknown date'}
+                          {score && score.date
+                            ? new Date(score.date).toLocaleDateString()
+                            : "Unknown date"}
                         </div>
                       </div>
                     </div>

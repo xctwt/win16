@@ -1,4 +1,3 @@
-// components/Windows.tsx
 import React, { memo, useMemo } from 'react';
 import Draggable from 'react-draggable';
 import { X } from 'lucide-react';

@@ -1,4 +1,3 @@
-// components/Desktop.tsx
 import React, { memo } from 'react';
 import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Settings, Cookie, Mail } from 'lucide-react';
 import { useWindowState, WindowId } from '@/lib/windowContext';
