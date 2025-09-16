@@ -13,6 +13,7 @@ import { Contact } from '@/components/Contact';
 import { useScreensaver } from '@/lib/screensaverContext';
 import { Account } from '@/components/Account';
 import { ToastProvider, ToastViewport } from '@/components/ui/use-toast';
+import { Nades } from '../components/Nades';
 
 const Windows = memo(function Windows() {
   const { windowStates } = useWindowState();
@@ -28,6 +29,7 @@ const Windows = memo(function Windows() {
     settings: windowStates?.settings ?? { isOpen: false, zIndex: 0 },
     contact: windowStates?.contact ?? { isOpen: false, zIndex: 0 },
     account: windowStates?.account ?? { isOpen: false, zIndex: 0 },
+    nades: windowStates?.nades ?? { isOpen: false, zIndex: 0 },
   };
 
   return (
@@ -41,6 +43,7 @@ const Windows = memo(function Windows() {
       {safeWindowStates.settings.isOpen && <Settings />}
       {safeWindowStates.contact.isOpen && <Contact />}
       {safeWindowStates.account.isOpen && <Account />}
+      {safeWindowStates.nades.isOpen && <Nades />}
     </>
   );
 });

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Settings, Cookie, Mail } from 'lucide-react';
+import { Music, MessageSquare, Info, Paintbrush, FolderOpen, Settings, Cookie, Mail, Bomb } from 'lucide-react';
 import { useWindowState, WindowId } from '@/lib/windowContext';
 
 export const Desktop = memo(function Desktop() {
@@ -14,6 +14,7 @@ export const Desktop = memo(function Desktop() {
     { id: 'settings' as WindowId, label: 'settings', Icon: Settings },
     { id: 'clicker' as WindowId, label: 'clicker', Icon: Cookie },
     { id: 'contact' as WindowId, label: 'contact', Icon: Mail },
+    { id: 'nades' as WindowId, label: 'nades', Icon: Bomb }, // new
   ];
 
   return (

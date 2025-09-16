@@ -50,7 +50,7 @@ const changelog: ChangelogEntry[] = [
 
 export function InfoWindow() {
   const defaultPosition = useMemo(() => ({ x: 75, y: 105 }), []);
-  const [expandedDates, setExpandedDates] = useState<string[]>([changelog[0].date, changelog[1].date]);
+  const [expandedDates, setExpandedDates] = useState<string[]>([changelog[0].date]);
 
   const toggleExpand = (date: string) => {
     setExpandedDates((prev) =>

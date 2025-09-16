@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
 // Define window IDs type
-export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings' | 'contact' | 'account';
+export type WindowId = 'music' | 'info' | 'chat' | 'paint' | 'drawings' | 'clicker' | 'settings' | 'contact' | 'account' | 'nades';
 
 interface WindowStateItem {
   isOpen: boolean;
@@ -19,6 +19,7 @@ export interface WindowState {
   settings: WindowStateItem;
   contact: WindowStateItem;
   account: WindowStateItem;
+  nades: WindowStateItem; // added
 }
 
 interface WindowContextType {
@@ -42,17 +43,17 @@ const initialWindowStates: WindowState = {
   settings: { isOpen: false, zIndex: 0 },
   contact: { isOpen: false, zIndex: 0 },
   account: { isOpen: false, zIndex: 0 },
+  nades: { isOpen: false, zIndex: 0 },
 };
 
 // Helper function to ensure a window state is valid
 const ensureValidWindowState = (state: WindowState): WindowState => {
   const validState = { ...initialWindowStates };
-  Object.keys(validState).forEach((key) => {
-    const windowId = key as WindowId;
-    if (state[windowId]) {
-      validState[windowId] = {
-        isOpen: Boolean(state[windowId].isOpen),
-        zIndex: Number(state[windowId].zIndex) || 0
+  (Object.keys(validState) as (keyof WindowState)[]).forEach((key) => {
+    if ((state as any)[key]) {
+      validState[key] = {
+        isOpen: Boolean((state as any)[key].isOpen),
+        zIndex: Number((state as any)[key].zIndex) || 0
       };
     }
   });
@@ -90,7 +91,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         [id]: { isOpen: true, zIndex: maxZ + 1 }
-      };
+      } as WindowState;
     });
   };
 
@@ -110,7 +111,7 @@ export function WindowProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         [id]: { ...prev[id], zIndex: maxZ + 1 }
-      };
+      } as WindowState;
     });
   };
 
@@ -120,11 +121,11 @@ export function WindowProvider({ children }: { children: ReactNode }) {
       const maxZ = Math.max(...Object.values(prev).map(w => w.zIndex));
       return {
         ...prev,
-        [id]: { 
-          isOpen: !prev[id].isOpen, 
-          zIndex: !prev[id].isOpen ? maxZ + 1 : 0 
+        [id]: {
+          isOpen: !prev[id].isOpen,
+          zIndex: !prev[id].isOpen ? maxZ + 1 : 0
         }
-      };
+      } as WindowState;
     });
   };
 
