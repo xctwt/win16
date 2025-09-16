@@ -12,7 +12,9 @@ const changelog: ChangelogEntry[] = [
   {
     date: '2025-09-16',
     changes: [
-      'ws chat instead of query'
+      'ws chat instead of query',
+      'fixed vote counting',
+      'new icons'
     ]
   },
   {
