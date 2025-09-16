@@ -10,6 +10,9 @@ import { storage } from './storage';
 import { mkdir } from 'fs/promises';
 import fs from 'fs/promises';
 import crypto from 'crypto';
+import { WebSocketServer } from 'ws';
+import type { WebSocket } from 'ws';
+import type { Message } from '@shared/schema';
 
 const app = express();
 
@@ -310,6 +313,80 @@ app.use((req, res, next) => {
 // Start the server
 (async () => {
   const server = registerRoutes(app);
+  
+  // Setup WebSocket server on a specific path
+  const wss = new WebSocketServer({ 
+    server,
+    path: '/ws/chat'
+  });
+  
+  // Store connected clients
+  const clients = new Set<WebSocket>();
+  
+  // WebSocket connection handler
+  wss.on('connection', (ws: WebSocket, req) => {
+    console.log('New WebSocket connection from:', req.socket.remoteAddress);
+    clients.add(ws);
+    
+    // Send recent messages to newly connected client
+    storage.getMessages().then(messages => {
+      ws.send(JSON.stringify({
+        type: 'initial_messages',
+        messages: messages.slice(-50) // Send last 50 messages
+      }));
+    }).catch(err => {
+      console.error('Error sending initial messages:', err);
+    });
+    
+    // Handle incoming messages
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        if (message.type === 'chat_message') {
+          const { nickname, content } = message;
+          
+          // Validate input
+          if (!nickname || typeof nickname !== 'string' || !content || typeof content !== 'string') {
+            ws.send(JSON.stringify({ type: 'error', message: 'Invalid message data' }));
+            return;
+          }
+          
+          // Save message to storage
+          const newMessage = await storage.createMessage({ nickname, content });
+          
+          // Broadcast to all connected clients
+          const broadcastMessage = JSON.stringify({
+            type: 'new_message',
+            message: newMessage
+          });
+          
+          clients.forEach(client => {
+            if (client.readyState === client.OPEN) {
+              client.send(broadcastMessage);
+            }
+          });
+          
+          console.log('Broadcasted message to', clients.size, 'clients');
+        }
+      } catch (error) {
+        console.error('Error processing WebSocket message:', error);
+        ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
+      }
+    });
+    
+    // Handle connection close
+    ws.on('close', () => {
+      console.log('WebSocket connection closed');
+      clients.delete(ws);
+    });
+    
+    // Handle connection errors
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      clients.delete(ws);
+    });
+  });
 
   // Global error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

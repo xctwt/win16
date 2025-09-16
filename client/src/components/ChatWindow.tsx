@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
 import { Window } from "./Windows";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Message } from "@shared/schema";
+import { useWebSocketChat } from "@/hooks/use-websocket-chat";
 
 function generateRandomNumber() {
   return Math.floor(Math.random() * 9000 + 1000);
@@ -19,23 +18,11 @@ export const ChatWindow = memo(function ChatWindow() {
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages = [] } = useQuery<Message[]>({
-    queryKey: ["/api/messages"],
-    refetchInterval: 300,
-  });
+  const { messages: wsMessages, sendMessage, isConnected, isConnecting } = useWebSocketChat();
 
   useEffect(() => {
-    setLocalMessages(messages);
-  }, [messages]);
-
-  const mutation = useMutation({
-    mutationFn: async (content: string) => {
-      await apiRequest("POST", "/api/messages", { nickname, content });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/messages"] });
-    },
-  });
+    setLocalMessages(wsMessages);
+  }, [wsMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,7 +82,7 @@ export const ChatWindow = memo(function ChatWindow() {
         const newNick = trimmedMessage.slice(6);
         handleNicknameCommand(newNick);
       } else if (!handleCommands(trimmedMessage)) {
-        mutation.mutate(trimmedMessage);
+        sendMessage(nickname, trimmedMessage);
       }
       setMessage("");
     }
@@ -140,6 +127,18 @@ export const ChatWindow = memo(function ChatWindow() {
   return (
     <Window title="chat" windowId="chat" defaultPosition={defaultPosition}>
       <div className="w-80 h-64 flex flex-col">
+        {/* Connection status indicator */}
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-2 text-xs">
+            <div className={`w-2 h-2 rounded-full ${
+              isConnecting ? 'bg-yellow-500' : isConnected ? 'bg-green-500' : 'bg-red-500'
+            }`} />
+            <span className="text-gray-600">
+              {isConnecting ? 'Connecting...' : isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+        </div>
+        
         <div className="flex-1 overflow-auto mb-4">
           {displayMessages.map((msg, index) => (
             <div key={msg.id} className="mb-2">
@@ -172,9 +171,10 @@ export const ChatWindow = memo(function ChatWindow() {
           <button
             type="submit"
             className="cs-button"
-            disabled={mutation.isPending}
+            disabled={!isConnected || isConnecting}
+            title={isConnecting ? "Connecting..." : !isConnected ? "Disconnected" : "Send message"}
           >
-            Send
+            {isConnecting ? "..." : isConnected ? "Send" : "⚠"}
           </button>
         </form>
       </div>

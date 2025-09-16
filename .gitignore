@@ -8,4 +8,5 @@ uploads
 data
 bun.lockb
 .env
-.million/
+.million/store.json
+.million

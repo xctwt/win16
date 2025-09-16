@@ -10,6 +10,12 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    date: '2025-09-16',
+    changes: [
+      'ws chat instead of query'
+    ]
+  },
+  {
     date: '2025-08-26',
     changes: [
       'PoW voting system in drawings'
@@ -50,7 +56,7 @@ const changelog: ChangelogEntry[] = [
 
 export function InfoWindow() {
   const defaultPosition = useMemo(() => ({ x: 75, y: 105 }), []);
-  const [expandedDates, setExpandedDates] = useState<string[]>([changelog[0].date, changelog[1].date]);
+  const [expandedDates, setExpandedDates] = useState<string[]>([changelog[0].date]);
 
   const toggleExpand = (date: string) => {
     setExpandedDates((prev) =>
