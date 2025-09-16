@@ -12,6 +12,7 @@ interface WindowProps {
 
 export const Window = memo(function Window({ title, children, defaultPosition = { x: 20, y: 20 }, windowId }: WindowProps) {
   const { closeWindow, focusWindow, windowStates } = useWindowState();
+  const nodeRef = React.useRef(null);
   
   // Ensure we have a valid window state
   const windowState = windowStates?.[windowId] ?? { isOpen: false, zIndex: 0 };
@@ -39,12 +40,14 @@ export const Window = memo(function Window({ title, children, defaultPosition = 
 
   return (
     <Draggable 
+      nodeRef={nodeRef}
       handle=".cs-titlebar" 
       defaultPosition={defaultPosition}
       onStart={handleFocus}
       onMouseDown={handleFocus}
     >
       <div 
+        ref={nodeRef}
         className="cs-window" 
         style={{ 
           zIndex: windowState.zIndex || 0,

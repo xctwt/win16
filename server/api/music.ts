@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router } from 'ultimate-express';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { IAudioMetadata, parseBuffer } from 'music-metadata';

@@ -10,3 +10,4 @@ bun.lockb
 .env
 .million/store.json
 .million
+bun.lockb

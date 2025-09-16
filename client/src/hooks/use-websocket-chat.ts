@@ -21,7 +21,7 @@ export function useWebSocketChat(): UseWebSocketChatReturn {
   const [isConnecting, setIsConnecting] = useState(false);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
-  const reconnectTimeout = useRef<NodeJS.Timeout>();
+  const reconnectTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const connect = useCallback(() => {
     // Prevent multiple connection attempts

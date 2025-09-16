@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'ultimate-express';
 import axios from 'axios';
 import dotenv from 'dotenv';
 import multer from 'multer';
@@ -34,7 +34,7 @@ router.post('/', async (req, res) => {
 });
 
 // Handle image uploads
-router.post('/upload', upload.single('file'), async (req: any, res) => {
+router.post('/upload', upload.single('file') as any, async (req: Request & { file?: Express.Multer.File }, res: Response) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -47,7 +47,7 @@ router.post('/upload', upload.single('file'), async (req: any, res) => {
 
     // Create form data for Discord
     const formData = new FormData();
-    formData.append('file', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
+    formData.append('file', new Blob([new Uint8Array(req.file.buffer)], { type: req.file.mimetype }), req.file.originalname);
 
     // Upload to Discord webhook
     const response = await axios.post(DISCORD_WEBHOOK_URL, formData, {

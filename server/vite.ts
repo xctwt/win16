@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express } from "ultimate-express";
 import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";

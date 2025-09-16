@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { Router } from 'express';
+import { Router } from 'ultimate-express';
 import crypto from 'crypto';
 
 const router = Router();

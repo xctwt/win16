@@ -4,12 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- DNS prefetch for any external resources -->
-    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-    
-    <!-- Preconnect to self for faster asset loading -->
-    <link rel="preconnect" href="/" crossorigin />
-    
     <!-- Critical CSS inline to avoid render blocking -->
     <style>
       /* Critical above-the-fold styles */
@@ -88,7 +82,14 @@
           url('/assets/icons/images.png'),
           url('/assets/icons/settings.png'),
           url('/assets/icons/clicker.png'),
-          url('/assets/icons/message.png');
+          url('/assets/icons/message.png'),
+          url('/assets/icons/play-16.png'),
+          url('/assets/icons/pause-16.png'),
+          url('/assets/icons/skip-back-16.png'),
+          url('/assets/icons/skip-forward-16.png'),
+          url('/assets/icons/playlist-16.png'),
+          url('/assets/icons/volume-16.png'),
+          url('/assets/icons/close-16.png');
       }
       
       /* Loading state prevention */
@@ -109,6 +110,15 @@
     <link rel="preload" href="/assets/icons/settings.png" as="image" />
     <link rel="preload" href="/assets/icons/clicker.png" as="image" />
     <link rel="preload" href="/assets/icons/message.png" as="image" />
+    
+    <!-- Music player icons preload -->
+    <link rel="preload" href="/assets/icons/play-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/pause-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/skip-back-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/skip-forward-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/playlist-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/volume-16.png" as="image" />
+    <link rel="preload" href="/assets/icons/close-16.png" as="image" />
     
     <!-- Preload the main JS bundle -->
     <link rel="modulepreload" href="/src/main.tsx" />

@@ -1,16 +1,8 @@
 import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
 import { Window } from "./Windows";
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  Loader2,
-  List,
-  X,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/lib/themeContext";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 
 interface Track {
@@ -32,20 +24,27 @@ export const MusicPlayer = memo(function MusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { theme } = useTheme();
 
   const defaultWindowPosition = useMemo(() => ({ x: 95, y: 21 }), []);
 
-  // Memoize icons to prevent unnecessary re-renders
-  const skipBackIcon = useMemo(() => <SkipBack className="w-4 h-4" />, []);
-  const skipForwardIcon = useMemo(
-    () => <SkipForward className="w-4 h-4" />,
-    [],
+  // Theme-aware icon styling
+  const iconStyle = useMemo(
+    () => ({ filter: theme === 'light' ? 'invert(1)' : 'none' }),
+    [theme]
   );
-  const pauseIcon = useMemo(() => <Pause className="w-4 h-4" />, []);
-  const playIcon = useMemo(() => <Play className="w-4 h-4" />, []);
-  const listIcon = useMemo(() => <List className="w-4 h-4" />, []);
-  const closeIcon = useMemo(() => <X className="w-4 h-4" />, []);
-  const volumeIcon = useMemo(() => <Volume2 className="w-4 h-4" />, []);
+
+  // Memoize custom icons to prevent unnecessary re-renders
+  const skipBackIcon = useMemo(() => <img src="/assets/icons/skip-back-16.png" alt="Skip Back" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
+  const skipForwardIcon = useMemo(
+    () => <img src="/assets/icons/skip-forward-16.png" alt="Skip Forward" className="w-4 h-4" style={iconStyle} />,
+    [iconStyle],
+  );
+  const pauseIcon = useMemo(() => <img src="/assets/icons/pause-16.png" alt="Pause" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
+  const playIcon = useMemo(() => <img src="/assets/icons/play-16.png" alt="Play" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
+  const listIcon = useMemo(() => <img src="/assets/icons/playlist-16.png" alt="Playlist" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
+  const closeIcon = useMemo(() => <img src="/assets/icons/close-16.png" alt="Close" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
+  const volumeIcon = useMemo(() => <img src="/assets/icons/volume-16.png" alt="Volume" className="w-4 h-4" style={iconStyle} />, [iconStyle]);
 
   const fetchTracks = async (): Promise<Track[]> => {
     const response = await fetch("/api/tracks");
