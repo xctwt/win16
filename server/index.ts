@@ -1,4 +1,4 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express, { type Request, Response, NextFunction } from "ultimate-express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import scoresRouter from './api/scores';
@@ -10,8 +10,6 @@ import { storage } from './storage';
 import { mkdir } from 'fs/promises';
 import fs from 'fs/promises';
 import crypto from 'crypto';
-import { WebSocketServer } from 'ws';
-import type { WebSocket } from 'ws';
 import type { Message } from '@shared/schema';
 
 const app = express();
@@ -27,8 +25,21 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(express.json({ limit: '10mb' })); // Limit payload size
 app.use(express.urlencoded({ extended: false }));
 
-// Serve static files from the public directory
-app.use('/assets', express.static(path.join(process.cwd(), 'client/public/assets')));
+// Serve static files from the public directory with aggressive cache headers
+app.use('/assets', express.static(path.join(process.cwd(), 'client/public/assets'), {
+  maxAge: '1y', // Cache for 1 year
+  etag: true,
+  lastModified: true,
+  immutable: true, // Assets never change
+  setHeaders: (res, path) => {
+    // Set cache headers based on file type
+    if (path.endsWith('.png') || path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else if (path.endsWith('.mp3')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 
 // Register API routes
 app.use('/api', scoresRouter);
@@ -239,36 +250,17 @@ app.use((req, res, next) => {
 (async () => {
   const server = registerRoutes(app);
   
-  // Setup WebSocket server on a specific path
-  const wss = new WebSocketServer({ 
-    server,
-    path: '/ws/chat'
-  });
-  
   // Store connected clients
-  const clients = new Set<WebSocket>();
+  const clients = new Set();
   
-  // WebSocket connection handler
-  wss.on('connection', (ws: WebSocket, req) => {
-    clients.add(ws);
-    
-    // Send recent messages to newly connected client
-    storage.getMessages().then(messages => {
-      ws.send(JSON.stringify({
-        type: 'initial_messages',
-        messages: messages.slice(-50) // Send last 50 messages
-      }));
-    }).catch(err => {
-      console.error('Error sending initial messages:', err);
-    });
-    
-    // Handle incoming messages
-    ws.on('message', async (data) => {
+  // Setup WebSocket using Ultimate Express's built-in uWS
+  (app as any).uwsApp.ws('/ws/chat', {
+    message: async (ws: any, message: any, opCode: any) => {
       try {
-        const message = JSON.parse(data.toString());
+        const data = JSON.parse(Buffer.from(message).toString());
         
-        if (message.type === 'chat_message') {
-          const { nickname, content } = message;
+        if (data.type === 'chat_message') {
+          const { nickname, content } = data;
           
           // Validate input
           if (!nickname || typeof nickname !== 'string' || !content || typeof content !== 'string') {
@@ -285,29 +277,47 @@ app.use((req, res, next) => {
             message: newMessage
           });
           
-          clients.forEach(client => {
-            if (client.readyState === client.OPEN) {
+          clients.forEach((client: any) => {
+            if (client !== ws) {
               client.send(broadcastMessage);
             }
           });
           
+          // Send back to sender for confirmation
+          ws.send(broadcastMessage);
+          
+          console.log(`Broadcasted message to ${clients.size} clients`);
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
         ws.send(JSON.stringify({ type: 'error', message: 'Invalid message format' }));
       }
-    });
+    },
     
-    // Handle connection close
-    ws.on('close', () => {
-      clients.delete(ws);
-    });
+    open: async (ws: any) => {
+      clients.add(ws);
+      console.log(`New WebSocket connection. Total clients: ${clients.size}`);
+      
+      // Send recent messages to newly connected client
+      try {
+        const messages = await storage.getMessages();
+        ws.send(JSON.stringify({
+          type: 'initial_messages',
+          messages: messages.slice(-50) // Send last 50 messages
+        }));
+      } catch (err) {
+        console.error('Error sending initial messages:', err);
+      }
+    },
     
-    // Handle connection errors
-    ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+    close: (ws: any, code: any, message: any) => {
       clients.delete(ws);
-    });
+      console.log(`WebSocket connection closed. Total clients: ${clients.size}`);
+    },
+    
+    drain: (ws: any) => {
+      // Handle backpressure
+    }
   });
 
   // Global error handler
@@ -320,7 +330,7 @@ app.use((req, res, next) => {
   });
 
   if (app.get("env") === "development") {
-    await setupVite(app, server);
+    await setupVite(app, null as any); // Ultimate Express handles server internally
   } else {
     serveStatic(app);
   }
@@ -349,7 +359,7 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client
   const PORT = 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`Server running on port ${PORT}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    log(`Ultimate Express server running on port ${PORT}`);
   });
 })();

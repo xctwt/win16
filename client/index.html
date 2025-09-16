@@ -3,6 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- DNS prefetch for any external resources -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    
+    <!-- Preconnect to self for faster asset loading -->
+    <link rel="preconnect" href="/" crossorigin />
+    
+    <!-- Critical CSS inline to avoid render blocking -->
+    <style>
+      /* Critical above-the-fold styles */
+      body {
+        margin: 0;
+        background-color: #1a1a1a;
+        font-family: system-ui, -apple-system, sans-serif;
+        transition: none;
+        overflow: hidden;
+      }
+      
+      /* Desktop icons container - critical layout */
+      .desktop-icons {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fill, 64px);
+      }
+      
+      /* Desktop icon styling - critical */
+      .desktop-icon {
+        width: 64px;
+        height: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        color: white;
+        padding: 8px;
+        border-radius: 4px;
+        transition: background-color 0.15s ease;
+      }
+      
+      .desktop-icon:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+      
+      .desktop-icon-image {
+        width: 32px;
+        height: 32px;
+        margin-bottom: 4px;
+      }
+      
+      .desktop-icon-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      
+      .desktop-icon-label {
+        font-size: 12px;
+        text-align: center;
+        max-width: 60px;
+        word-break: break-word;
+        line-height: 1.2;
+      }
+      
+      /* Preload icons via CSS - instant caching */
+      body::before {
+        content: '';
+        position: absolute;
+        width: 0;
+        height: 0;
+        overflow: hidden;
+        z-index: -1000;
+        background-image: 
+          url('/assets/icons/music.png'),
+          url('/assets/icons/readme.png'),
+          url('/assets/icons/chat.png'),
+          url('/assets/icons/paint.png'),
+          url('/assets/icons/images.png'),
+          url('/assets/icons/settings.png'),
+          url('/assets/icons/clicker.png'),
+          url('/assets/icons/message.png');
+      }
+      
+      /* Loading state prevention */
+      #root {
+        min-height: 100vh;
+        background: #1a1a1a;
+      }
+    </style>
+    
+    <!-- Preload desktop icons with maximum priority -->
+    <link rel="preload" href="/assets/icons/music.png" as="image" fetchpriority="high" />
+    <link rel="preload" href="/assets/icons/readme.png" as="image" fetchpriority="high" />
+    <link rel="preload" href="/assets/icons/chat.png" as="image" fetchpriority="high" />
+    <link rel="preload" href="/assets/icons/paint.png" as="image" fetchpriority="high" />
+    
+    <!-- Secondary icons with normal priority -->
+    <link rel="preload" href="/assets/icons/images.png" as="image" />
+    <link rel="preload" href="/assets/icons/settings.png" as="image" />
+    <link rel="preload" href="/assets/icons/clicker.png" as="image" />
+    <link rel="preload" href="/assets/icons/message.png" as="image" />
+    
+    <!-- Preload the main JS bundle -->
+    <link rel="modulepreload" href="/src/main.tsx" />
   </head>
   <body>
     <div id="root"></div>

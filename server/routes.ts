@@ -1,5 +1,4 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
+import type { Express, Request, Response } from "ultimate-express";
 import { storage } from "./storage";
 import { insertDrawingSchema, type InsertDrawing, type VoteRequest, type PowPayload } from "@shared/schema";
 import path from "path";
@@ -74,7 +73,7 @@ function verifyPow(challenge: PowChallenge, payload: PowPayload, clientId: strin
   return true;
 }
 
-export function registerRoutes(app: Express): Server {
+export function registerRoutes(app: Express): Express {
   // Get PoW challenge
   app.get('/api/vote/pow-challenge', (req: Request, res: Response) => {
     try {
@@ -159,5 +158,5 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  return createServer(app);
+  return app;
 }
