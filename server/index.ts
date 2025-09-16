@@ -16,6 +16,9 @@ import type { Message } from '@shared/schema';
 
 const app = express();
 
+// Configure Express to trust proxies for real IP addresses
+app.set('trust proxy', true);
+
 // Add a flag to control whether to enforce secure verification
 const ENFORCE_SECURE_VERIFICATION = false; // Set to false during transition period
 
@@ -32,61 +35,6 @@ app.use('/api', scoresRouter);
 app.use('/api', musicRouter);
 app.use('/api', messagesRouter);
 app.use('/api/contact', contactRouter);
-
-// Debug endpoint to test message saving
-app.post('/debug/save-message', async (req, res) => {
-  try {
-    console.log('Debug: Saving test message');
-    
-    // Create a test message
-    const testMessage = {
-      nickname: 'DebugUser',
-      content: 'Test message from debug endpoint'
-    };
-    
-    // Save to storage
-    const savedMessage = await storage.createMessage(testMessage);
-    console.log('Debug: Message saved to storage:', savedMessage);
-    
-    // Read messages.json file
-    const MESSAGES_FILE = path.join(process.cwd(), 'data/messages.json');
-    let fileContent = '';
-    try {
-      fileContent = await fs.readFile(MESSAGES_FILE, 'utf-8');
-      console.log('Debug: Current messages.json content:', fileContent);
-    } catch (error) {
-      console.error('Debug: Error reading messages.json:', error);
-      fileContent = 'Error reading file';
-    }
-    
-    res.json({
-      success: true,
-      message: savedMessage,
-      fileContent
-    });
-  } catch (error) {
-    console.error('Debug: Error in debug endpoint:', error);
-    res.status(500).json({ error: 'Debug endpoint error' });
-  }
-});
-
-// Debug endpoint to manually write to messages.json
-app.post('/debug/write-messages', async (req, res) => {
-  try {
-    console.log('Debug: Writing messages to file');
-    
-    // Save messages to file
-    await storage.saveMessagesToFile();
-    
-    res.json({
-      success: true,
-      message: 'Messages saved to file'
-    });
-  } catch (error) {
-    console.error('Debug: Error writing messages to file:', error);
-    res.status(500).json({ error: 'Failed to write messages to file' });
-  }
-});
 
 // Drawings API endpoint
 app.post('/api/drawings', async (req, res) => {
@@ -117,19 +65,8 @@ function hashString(str: string): string {
 // Scores API endpoint
 app.post('/api/scores', async (req, res) => {
   try {
-    console.log('Received score submission body:', JSON.stringify(req.body));
     
     const { name, score, prestige = 0, color, timestamp, token } = req.body;
-    
-    console.log('Parsed score submission:', { 
-      name, 
-      score, 
-      prestige, 
-      timestamp, 
-      token: token ? token.substring(0, 10) + '...' : undefined,
-      hasToken: !!token,
-      hasTimestamp: !!timestamp
-    });
     
     // Basic validation
     if (!name || typeof score !== 'number') {
@@ -141,7 +78,6 @@ app.post('/api/scores', async (req, res) => {
     let verificationStatus = 'none';
     
     if (timestamp && token) {
-      console.log('Attempting to verify score with token');
       try {
         // Generate the token data using the timestamp and score from the request
         const tokenData = `${timestamp}:${score}`;
@@ -149,21 +85,11 @@ app.post('/api/scores', async (req, res) => {
         // Hash the token data using the same algorithm as the client
         const expectedToken = hashString(tokenData);
         
-        console.log('Verification comparison:', {
-          providedToken: token,
-          expectedToken: expectedToken,
-          tokenData: tokenData,
-          match: token === expectedToken
-        });
         
         // Compare the provided token with the expected token
         const isValid = token === expectedToken;
         verificationStatus = isValid ? 'success' : 'failed';
         
-        console.log('Score verification result:', { 
-          isValid, 
-          verificationStatus
-        });
         
         if (!isValid) {
           console.warn('Invalid score token detected:', { 
@@ -197,7 +123,6 @@ app.post('/api/scores', async (req, res) => {
         console.warn('Rejecting submission without verification (secure verification enforced)');
         return res.status(403).json({ error: 'Verification required' });
       }
-      console.log('No verification provided, proceeding anyway');
     }
 
     // Map the color correctly for storage
@@ -325,7 +250,6 @@ app.use((req, res, next) => {
   
   // WebSocket connection handler
   wss.on('connection', (ws: WebSocket, req) => {
-    console.log('New WebSocket connection from:', req.socket.remoteAddress);
     clients.add(ws);
     
     // Send recent messages to newly connected client
@@ -367,7 +291,6 @@ app.use((req, res, next) => {
             }
           });
           
-          console.log('Broadcasted message to', clients.size, 'clients');
         }
       } catch (error) {
         console.error('Error processing WebSocket message:', error);
@@ -377,7 +300,6 @@ app.use((req, res, next) => {
     
     // Handle connection close
     ws.on('close', () => {
-      console.log('WebSocket connection closed');
       clients.delete(ws);
     });
     

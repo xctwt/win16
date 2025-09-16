@@ -78,7 +78,7 @@ export function registerRoutes(app: Express): Server {
   // Get PoW challenge
   app.get('/api/vote/pow-challenge', (req: Request, res: Response) => {
     try {
-      const ip = req.ip || 'unknown';
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
       const challenge = createPowChallenge(ip);
       res.json({ challengeId: challenge.id, prefix: challenge.prefix, difficulty: challenge.difficulty, expiresAt: challenge.expiresAt });
     } catch (e) {
@@ -138,7 +138,7 @@ export function registerRoutes(app: Express): Server {
       if (!clientId || typeof clientId !== 'string') return res.status(400).json({ error: 'Invalid client ID' });
       if (!pow || typeof pow !== 'object') return res.status(400).json({ error: 'Missing PoW data' });
 
-      const ip = req.ip || 'unknown';
+      const ip = req.ip || req.socket.remoteAddress || 'unknown';
       if (!canVote(ip)) return res.status(429).json({ error: 'Too many votes from this IP. Please slow down.' });
 
       const challenge = powChallenges.get(pow.challengeId);
