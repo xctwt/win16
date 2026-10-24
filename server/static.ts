@@ -3,6 +3,7 @@ import { DIST_DIR, PUBLIC_DIR, UPLOADS_DIR } from "./config";
 
 const ONE_YEAR = "public, max-age=31536000, immutable";
 const ONE_WEEK = "public, max-age=604800";
+const COMPRESSIBLE = /\.(js|css|html|svg|json|txt)$/;
 
 /** Resolve `urlPath` inside `root`, refusing anything that escapes it. */
 function safeJoin(root: string, urlPath: string): string | null {
@@ -20,6 +21,7 @@ async function fileResponse(req: Request, path: string, cacheControl: string): P
   const file = Bun.file(path);
   const info = await file.stat().catch(() => null);
   if (!info?.isFile()) return null;
+  const variant = await precompressed(req, path);
 
   const lastModified = info.mtime.toUTCString();
   const headers: Record<string, string> = {
@@ -28,6 +30,7 @@ async function fileResponse(req: Request, path: string, cacheControl: string): P
     "Accept-Ranges": "bytes",
     "Content-Type": file.type,
   };
+  if (COMPRESSIBLE.test(path)) headers.Vary = "Accept-Encoding";
 
   const since = req.headers.get("if-modified-since");
   if (since && Date.parse(since) >= Math.floor(info.mtime.getTime() / 1000) * 1000) {
@@ -49,7 +52,25 @@ async function fileResponse(req: Request, path: string, cacheControl: string): P
     });
   }
 
+  if (variant) {
+    return new Response(variant.file, { headers: { ...headers, "Content-Encoding": variant.encoding } });
+  }
   return new Response(file, { headers });
+}
+
+/** The build writes .br and .gz copies of text assets (scripts/compress.ts). */
+async function precompressed(req: Request, path: string) {
+  if (req.headers.has("range") || !COMPRESSIBLE.test(path)) return null;
+  const accepted = req.headers.get("accept-encoding") ?? "";
+  for (const [encoding, ext] of [
+    ["br", ".br"],
+    ["gzip", ".gz"],
+  ] as const) {
+    if (!accepted.includes(encoding)) continue;
+    const file = Bun.file(path + ext);
+    if (await file.exists()) return { encoding, file };
+  }
+  return null;
 }
 
 /** Vite emits content-hashed bundles like /assets/index-B1x2y3z4.js. */

@@ -43,6 +43,7 @@ main() {
     bun install --frozen-lockfile --silent
     echo "==> Building client"
     bunx vite build --logLevel warn --outDir "$PWD/dist/public-next"
+    bun scripts/compress.ts dist/public-next >/dev/null
   fi
   [ -f dist/public-next/index.html ] || { echo "    Client build is missing index.html" >&2; return 1; }
 

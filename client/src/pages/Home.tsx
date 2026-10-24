@@ -10,7 +10,7 @@ const InfoWindow = lazy(() => import('@/components/InfoWindow').then((m) => ({ d
 const ChatWindow = lazy(() => import('@/components/ChatWindow').then((m) => ({ default: m.ChatWindow })));
 const Paint = lazy(() => import('@/components/Paint').then((m) => ({ default: m.Paint })));
 const DrawingsViewer = lazy(() => import('@/components/DrawingsViewer').then((m) => ({ default: m.DrawingsViewer })));
-const Clicker = lazy(() => import('@/components/Clicker').then((m) => ({ default: m.Clicker })));
+const Clicker = lazy(() => import('@/components/clicker/Clicker').then((m) => ({ default: m.Clicker })));
 const Settings = lazy(() => import('@/components/Settings').then((m) => ({ default: m.Settings })));
 const Contact = lazy(() => import('@/components/Contact').then((m) => ({ default: m.Contact })));
 

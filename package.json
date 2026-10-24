@@ -9,9 +9,10 @@
     "dev": "bun run --parallel dev:server dev:client",
     "dev:server": "bun --watch server/index.ts",
     "dev:client": "vite",
-    "build": "vite build",
+    "build": "vite build && bun scripts/compress.ts",
     "start": "NODE_ENV=production bun server/index.ts",
-    "check": "tsc"
+    "check": "tsc",
+    "test": "bun test"
   },
   "dependencies": {
     "music-metadata": "^12.2.3",
