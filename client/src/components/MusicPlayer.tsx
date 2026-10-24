@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import { Window } from "./Windows";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -328,7 +328,7 @@ export const MusicPlayer = memo(function MusicPlayer() {
               }}
             />
 
-            <div className="text-center font-bold h-6 overflow-hidden whitespace-nowrap">
+            <div className="mt-4 text-center font-bold h-6 overflow-hidden whitespace-nowrap">
               <div
                 className="inline-block"
                 style={{ transform: `translateX(${scrollPosition}px)` }}

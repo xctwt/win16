@@ -1,5 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from "react";
-import { useWindowState } from "@/lib/windowContext";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Bold,
   Italic,
@@ -19,12 +18,10 @@ import {
   Text,
   BaseEditor,
   Node,
+  Range,
 } from "slate";
 import { Slate, Editable, withReact, useSlate, ReactEditor } from "slate-react";
-import { withHistory } from "slate-history";
-import isHotkey from "is-hotkey";
-import { css } from "@emotion/css";
-import axios from "axios";
+import { withHistory, type HistoryEditor } from "slate-history";
 import { Window } from "./Windows";
 
 // Define custom element types
@@ -57,7 +54,7 @@ type CustomText = {
   code?: boolean;
 };
 
-type CustomEditor = BaseEditor & ReactEditor;
+type CustomEditor = BaseEditor & ReactEditor & HistoryEditor;
 
 declare module "slate" {
   interface CustomTypes {
@@ -67,12 +64,12 @@ declare module "slate" {
   }
 }
 
-// Hotkeys for formatting
+// Ctrl/Cmd + key formatting shortcuts
 const HOTKEYS: Record<string, string> = {
-  "mod+b": "bold",
-  "mod+i": "italic",
-  "mod+u": "underline",
-  "mod+`": "code",
+  b: "bold",
+  i: "italic",
+  u: "underline",
+  "`": "code",
 };
 
 // Initial value for the editor
@@ -83,23 +80,10 @@ const initialValue: Descendant[] = [
   } as ParagraphElement,
 ];
 
-// Define the Range type
-const Range = {
-  isCollapsed(range: any): boolean {
-    return (
-      range.anchor.path.every(
-        (n: number, i: number) => n === range.focus.path[i],
-      ) && range.anchor.offset === range.focus.offset
-    );
-  },
-};
-
 export function Contact() {
-  const { handleActivity } = useWindowState();
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
-  const editorRef = useRef<HTMLDivElement>(null);
   const defaultPosition = useMemo(() => ({ x: 100, y: 100 }), []);
 
   // Create a Slate editor object that won't change across renders
@@ -283,14 +267,10 @@ export function Contact() {
       const formData = new FormData();
       formData.append("file", blob, "image.png");
 
-      // Upload directly to Discord webhook
-      const response = await axios.post("/api/contact/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      return response.data.url;
+      // The server forwards it to the Discord webhook
+      const response = await fetch("/api/contact/upload", { method: "POST", body: formData });
+      if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
+      return (await response.json()).url;
     } catch (err) {
       console.error("Failed to upload image:", err);
       throw new Error("Failed to upload image");
@@ -352,9 +332,12 @@ export function Contact() {
       // Convert content to Discord format
       const discordContent = serializeToDiscord(contentCopy).trim();
 
-      await axios.post("/api/contact", {
-        message: discordContent,
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: discordContent }),
       });
+      if (!response.ok) throw new Error(`Send failed: ${response.status}`);
 
       setSent(true);
 
@@ -382,21 +365,14 @@ export function Contact() {
   }, []);
 
   // Define a element rendering function
-  const renderElement = useCallback(
-    (props: any) => {
-      return <Element {...props} editor={editor} />;
-    },
-    [editor],
-  );
+  const renderElement = useCallback((props: any) => <Element {...props} />, []);
 
   // Handle keyboard shortcuts for formatting
   const handleKeyDown = (event: React.KeyboardEvent) => {
-    for (const hotkey in HOTKEYS) {
-      if (isHotkey(hotkey, event)) {
-        event.preventDefault();
-        const mark = HOTKEYS[hotkey];
-        toggleMark(editor, mark);
-      }
+    const mark = HOTKEYS[event.key.toLowerCase()];
+    if (mark && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      toggleMark(editor, mark);
     }
   };
 
@@ -425,16 +401,12 @@ export function Contact() {
     }
   };
 
-  // Handle selection change to show/hide the toolbar
+  // Keep focus in the editor after toolbar actions
   const handleSelectionChange = useCallback(() => {
-    const { selection } = editor;
-
-    if (selection && !ReactEditor.isFocused(editor)) {
+    if (editor.selection && !ReactEditor.isFocused(editor)) {
       ReactEditor.focus(editor);
     }
-
-    handleActivity();
-  }, [editor, handleActivity]);
+  }, [editor]);
 
   // Handle image insertion
   const insertImage = (editor: CustomEditor, url: string) => {
@@ -526,38 +498,14 @@ export function Contact() {
             <div className="mb-4 relative">
               <label className="block text-sm font-medium mb-1">Message</label>
               <div
-                ref={editorRef}
                 className="border border-cs-border overflow-auto relative bg-cs-window text-cs-text"
               >
                 <Slate
                   editor={editor}
                   initialValue={initialValue}
-                  onChange={(value) => {
-                    const isAstChange = editor.operations.some(
-                      (op) => "set_selection" !== op.type,
-                    );
-                    if (isAstChange) {
-                      // Create a new reference for the children array
-                      editor.children = value.map((node) => ({ ...node }));
-                    }
-                    handleSelectionChange();
-                  }}
+                  onChange={handleSelectionChange}
                 >
-                  <div
-                    className={css`
-                      position: sticky;
-                      top: 0;
-                      left: 0;
-                      right: 0;
-                      z-index: 2;
-                      background-color: var(--cs-window);
-                      border-bottom: 1px solid var(--cs-border);
-                      padding: 8px;
-                      display: flex;
-                      gap: 8px;
-                      align-items: center;
-                    `}
-                  >
+                  <div className="sticky inset-x-0 top-0 z-2 flex items-center gap-2 border-b border-(--cs-border) bg-(--cs-window) p-2">
                     <ToolbarButton format="bold" icon={<Bold size={16} />} />
                     <ToolbarButton
                       format="italic"
@@ -612,7 +560,7 @@ export function Contact() {
                       autoFocus
                       onKeyDown={handleKeyDown}
                       onPaste={handlePaste}
-                      className="min-h-full outline-none"
+                      className="min-h-full outline-hidden"
                     />
                   </div>
                 </Slate>
@@ -675,7 +623,7 @@ const Leaf = ({ attributes, children, leaf }: any) => {
 
 // Define a React component to render elements
 const Element = (props: any) => {
-  const { attributes, children, element, editor } = props;
+  const { attributes, children, element } = props;
 
   switch (element.type) {
     case "block-quote":
@@ -804,7 +752,7 @@ const toggleBlock = (editor: Editor, format: string): void => {
     type: isActive ? "paragraph" : isList ? "list-item" : format,
   } as Partial<CustomElement>;
 
-  Transforms.setNodes(editor, newProperties);
+  Transforms.setNodes<SlateElement>(editor, newProperties);
 
   if (!isActive && isList) {
     const block = { type: format, children: [] } as CustomElement;
@@ -829,14 +777,7 @@ const ToolbarButton = ({
         e.stopPropagation();
         toggleMark(editor, format);
       }}
-      className={css`
-        cursor: pointer;
-        color: var(--cs-text);
-        opacity: ${isMarkActive(editor, format) ? 1 : 0.6};
-        &:hover {
-          opacity: 1;
-        }
-      `}
+      className={`cursor-pointer text-(--cs-text) hover:opacity-100 ${isMarkActive(editor, format) ? "opacity-100" : "opacity-60"}`}
     >
       {icon}
     </button>

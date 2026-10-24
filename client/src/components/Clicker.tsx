@@ -10,7 +10,6 @@ import {
 import { Window } from "./Windows";
 import {
   Sparkles,
-  Trophy,
   RotateCcw,
   Crown,
   Clock,
@@ -35,19 +34,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import crypto from "crypto-js";
+import type { Score, SeasonsResponse } from "@shared/types";
 
 type Tab = "game" | "scores";
-type Score = {
-  name: string;
-  score: number;
-  date: string;
-  prestige?: number;
-  color?: string;
-};
+
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 // Define a type for click animations
 type ClickAnimationData = {
@@ -265,12 +259,6 @@ export const Clicker = memo(function Clicker() {
       timestamp?: number;
       token?: string;
     }) => {
-      // Log the data being sent
-      console.log("Sending score data to server:", {
-        ...data,
-        token: data.token ? data.token.substring(0, 10) + "..." : undefined,
-      });
-
       const response = await fetch("/api/scores", {
         method: "POST",
         headers: {
@@ -292,7 +280,7 @@ export const Clicker = memo(function Clicker() {
         title: "Score saved!",
         description: "Your score has been saved to the leaderboard.",
       });
-      queryClient.invalidateQueries({ queryKey: ["scores"] });
+      queryClient.invalidateQueries({ queryKey: ["highScores"] });
     },
     onError: (error: Error) => {
       console.error("Error saving score:", error);
@@ -305,27 +293,11 @@ export const Clicker = memo(function Clicker() {
     },
   });
 
-  // Helper functions for score saving
-  const hashString = useCallback((str: string): string => {
-    return crypto.SHA256(str).toString();
+  // Matches the server's token format: sha256(timestamp:score)
+  const generateVerificationToken = useCallback(async (score: number) => {
+    const timestamp = Date.now();
+    return { timestamp, token: await sha256Hex(`${timestamp}:${score}`) };
   }, []);
-
-  const generateVerificationToken = useCallback(
-    (
-      name: string,
-      score: number,
-      prestige: number,
-    ): { timestamp: number; token: string } => {
-      const timestamp = Date.now();
-      // Match the server's token format: hash(timestamp:score)
-      const tokenData = `${timestamp}:${score}`;
-      return {
-        timestamp,
-        token: hashString(tokenData),
-      };
-    },
-    [hashString],
-  );
 
   const resetGame = useCallback(() => {
     setCount(0);
@@ -352,11 +324,7 @@ export const Clicker = memo(function Clicker() {
     }
 
     try {
-      const { timestamp, token } = generateVerificationToken(
-        playerName,
-        count,
-        prestige,
-      );
+      const { timestamp, token } = await generateVerificationToken(count);
 
       const prestigeLevel = Math.min(prestige, PRESTIGE_LEVELS.length - 1);
       const prestigeColor = PRESTIGE_LEVELS[prestigeLevel].color.replace(
@@ -372,11 +340,6 @@ export const Clicker = memo(function Clicker() {
         timestamp,
         token,
       };
-
-      console.log("Submitting score:", {
-        ...submissionData,
-        token: token.substring(0, 10) + "...",
-      });
 
       await saveScoreMutation.mutateAsync(submissionData);
 
@@ -398,46 +361,24 @@ export const Clicker = memo(function Clicker() {
 
   // Fetch seasons
   const { data: seasonsData = { seasons: [1, 2], currentSeason: 2 } } =
-    useQuery({
+    useQuery<SeasonsResponse>({
       queryKey: ["seasons"],
       queryFn: async () => {
-        try {
-          const response = await fetch("/api/seasons");
-          const data = await response.json();
-
-          // If we're on 'current', update to show what the current season actually is
-          if (selectedSeason === "current" && data.currentSeason) {
-            setSelectedSeason(data.currentSeason.toString());
-          }
-
-          return data;
-        } catch (error) {
-          console.error("Error fetching seasons:", error);
-          return { seasons: [1, 2], currentSeason: 2 };
-        }
+        const response = await fetch("/api/seasons");
+        if (!response.ok) throw new Error("Failed to load seasons");
+        return response.json();
       },
     });
+  const season =
+    selectedSeason === "current" ? String(seasonsData.currentSeason) : selectedSeason;
 
-  // Fetch high scores
+  // Fetch high scores (already sorted by prestige, then score)
   const { data: highScores = [] } = useQuery<Score[]>({
-    queryKey: ["highScores", selectedSeason],
+    queryKey: ["highScores", season],
     queryFn: async () => {
-      const response = await fetch(`/api/scores?season=${selectedSeason}`);
+      const response = await fetch(`/api/scores?season=${season}`);
+      if (!response.ok) return [];
       const data = await response.json();
-
-      // Sort by prestige first, then by score
-      if (Array.isArray(data)) {
-        return data.sort((a, b) => {
-          // First sort by prestige (higher first)
-          const prestigeDiff = (b.prestige || 0) - (a.prestige || 0);
-          if (prestigeDiff !== 0) return prestigeDiff;
-
-          // Then sort by score (higher first)
-          return b.score - a.score;
-        });
-      }
-
-      // Ensure we always return an array
       return Array.isArray(data) ? data : [];
     },
   });
@@ -803,10 +744,6 @@ export const Clicker = memo(function Clicker() {
     () => <Sparkles className="w-6 h-6" />,
     [],
   );
-  const MemoizedSparklesSmall = useMemo(
-    () => <Sparkles className="w-4 h-4" />,
-    [],
-  );
   const MemoizedCrownSmall = useMemo(
     () => <Crown className="w-4 h-4 inline mr-1" />,
     [],
@@ -844,8 +781,8 @@ export const Clicker = memo(function Clicker() {
             <button
               className={`cs-button flex-1 ${
                 activeTab === "game"
-                  ? "border-[var(--cs-text)]"
-                  : "border-[var(--cs-border)]"
+                  ? "border-(--cs-text)"
+                  : "border-(--cs-border)"
               }`}
               onClick={() => setActiveTab("game")}
             >
@@ -854,8 +791,8 @@ export const Clicker = memo(function Clicker() {
             <button
               className={`cs-button flex-1 ${
                 activeTab === "scores"
-                  ? "border-[var(--cs-text)]"
-                  : "border-[var(--cs-border)]"
+                  ? "border-(--cs-text)"
+                  : "border-(--cs-border)"
               }`}
               onClick={() => setActiveTab("scores")}
             >
@@ -998,12 +935,12 @@ export const Clicker = memo(function Clicker() {
             <>
               <div className="mb-4">
                 <Select
-                  value={selectedSeason}
+                  value={season}
                   onValueChange={setSelectedSeason}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Season">
-                      {`Season ${selectedSeason}`}
+                      {`Season ${season}`}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -1039,7 +976,7 @@ export const Clicker = memo(function Clicker() {
                           {score.name}
                         </span>
                       </div>
-                      <div className="text-right flex-shrink-0">
+                      <div className="text-right shrink-0">
                         <div
                           className={`font-bold ${getScoreColorClass(score.color)}`}
                         >

@@ -6,9 +6,7 @@
   --cs-border: #ffffff;      /* Borders */
   --cs-text: #ffffff;        /* Text color */
   --cs-hover: rgba(255, 255, 255, 0.1);
-  --cs-text-rgb: (255, 255, 255);  /* Add this line */
   --shadow: rgba(255, 255, 255, 0.1);
-  --desktop-icon-bg: rgba(0, 0, 0, 0.3);
 }
 
 :root.light {
@@ -18,9 +16,7 @@
   --cs-border: #000000;      /* Borders */
   --cs-text: #000000;        /* Text color */
   --cs-hover: rgba(0, 0, 0, 0.1);
-  --cs-text-rgb: (0, 0, 0);  /* Add this line */
   --shadow: rgba(0, 0, 0, 0.1);
-  --desktop-icon-bg: rgba(255, 255, 255, 0.3);
 }
 
 /* Ensure html and body have the same background color as the app */
@@ -47,8 +43,6 @@ html, body {
 
 .cs-button-active {
   background: var(--cs-hover);
-  border: 2px solid var(--cs-text);
-  padding: 3px 7px; /* Adjust padding to account for thicker border */
 }
 
 /* Make sure the app background uses the correct variable */
@@ -84,19 +78,6 @@ html, body {
 
 .cs-content {
   padding: 8px;
-}
-
-/* Button Styles */
-.cs-button {
-  background: var(--cs-window);
-  border: 1px solid var(--cs-border);
-  color: var(--cs-text);
-  padding: 4px 8px;
-  cursor: pointer;
-}
-
-.cs-button:hover {
-  background: var(--cs-hover);
 }
 
 .cs-close-button {
@@ -201,6 +182,7 @@ html, body {
   color: var(--cs-text);
   text-align: center;
   padding: 4px;
+  border-radius: 4px;
 }
 
 .desktop-icon:hover {
@@ -213,57 +195,20 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-bottom: 4px;
 }
 
 /* Desktop Icons */
 .desktop-icon-label {
+  line-height: 1.2;
   font-size: 12px;
   word-wrap: break-word;
   max-width: 100%;
   color: var(--cs-text);
-  text-shadow: 0 0 3px var(--cs-bg); /* Keep the text shadow for readability */
-  /* Remove these properties */
-  /* background-color: var(--desktop-icon-bg); */
-  /* padding: 2px 6px; */
-  /* border-radius: 4px; */
-}
-
-/* Remove this if you have it */
-.light .desktop-icon-label {
-  /* background-color: rgba(255, 255, 255, 0.3); */
+  text-shadow: 0 0 3px var(--cs-bg);
 }
 
 
-/* Dock Styles */
-.cs-dock {
-  background-color: var(--cs-window);
-  border: 1px solid var(--cs-border);
-}
-
-.cs-dock-icon {
-  border: 1px solid var(--cs-border);
-  background-color: var(--cs-window);
-  color: var(--cs-text);
-}
-
-/* In cs16.css or your music player styles */
-.playlist-item {
-  background: var(--cs-window);
-  color: var(--cs-text);
-  border: 1px solid var(--cs-border);
-  padding: 8px;
-  cursor: pointer;
-}
-
-.playlist-item:hover {
-  background: var(--cs-hover);
-}
-
-.playlist-item.active {
-  background: var(--cs-hover);
-  border-color: var(--cs-text);
-}
-/* Add these new styles for progress and volume controls */
 /* Progress bar */
 .progress-bar {
   height: 4px;

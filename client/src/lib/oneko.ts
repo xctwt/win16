@@ -1,8 +1,9 @@
-export function initOneko() {
+/** Starts the cat; returns a function that removes it. */
+export function initOneko(): () => void {
   const isReducedMotion =
     window.matchMedia(`(prefers-reduced-motion: reduce)`).matches;
 
-  if (isReducedMotion) return;
+  if (isReducedMotion) return () => {};
 
   const nekoEl = document.createElement("div");
 
@@ -95,15 +96,15 @@ export function initOneko() {
   nekoEl.style.top = `${nekoPosY - 16}px`;
   nekoEl.style.zIndex = "999";
 
-  // Use the GitHub URL for the sprite sheet
-  nekoEl.style.backgroundImage = "url('https://raw.githubusercontent.com/adryd325/oneko.js/master/oneko.gif')";
+  nekoEl.style.backgroundImage = "url('/assets/sprites/oneko.gif')";
 
   document.body.appendChild(nekoEl);
 
-  document.addEventListener("mousemove", function (event) {
+  const onMouseMove = (event: MouseEvent) => {
     mousePosX = event.clientX;
     mousePosY = event.clientY;
-  });
+  };
+  document.addEventListener("mousemove", onMouseMove, { passive: true });
 
   let lastFrameTimestamp: number | null = null;
 
@@ -233,4 +234,9 @@ export function initOneko() {
   }
 
   window.requestAnimationFrame(onAnimationFrame);
+
+  return () => {
+    document.removeEventListener("mousemove", onMouseMove);
+    nekoEl.remove(); // also stops the animation loop
+  };
 }

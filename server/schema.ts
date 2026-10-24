@@ -1,2 +1,0 @@
-// SpacetimeDB removed.
-export {};
