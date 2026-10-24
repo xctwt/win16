@@ -48,7 +48,7 @@ main() {
 
   # Keep the previous build's chunks so open tabs can still lazy-load windows; prune old ones.
   if [ -d dist/public/assets ]; then
-    cp -rnp dist/public/assets/. dist/public-next/assets/
+    cp -rp --update=none dist/public/assets/. dist/public-next/assets/
     find dist/public-next/assets -type f -mtime +14 -delete
   fi
   rm -rf dist/public-prev
@@ -69,7 +69,7 @@ main() {
 
   echo "==> Health check"
   for _ in $(seq 1 20); do
-    if curl -fsS -o /dev/null "http://127.0.0.1:${PORT:-5000}/api/seasons"; then
+    if curl -fs -o /dev/null "http://127.0.0.1:${PORT:-5000}/api/seasons"; then
       echo "    OK"
       return 0
     fi
