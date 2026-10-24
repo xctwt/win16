@@ -1,0 +1,18 @@
+# systemd user service. scripts/deploy.sh installs it to ~/.config/systemd/user/.
+# Requires lingering so it runs without a login session: sudo loginctl enable-linger $USER
+[Unit]
+Description=win16 web app
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/win16
+ExecStart=%h/.bun/bin/bun server/index.ts
+Environment=NODE_ENV=production
+Environment=PORT=5000
+Restart=always
+RestartSec=2
+TimeoutStopSec=10
+MemoryMax=300M
+
+[Install]
+WantedBy=default.target
