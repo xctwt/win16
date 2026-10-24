@@ -18,7 +18,7 @@ Music: drop `.mp3` files into `client/public/assets/music/` (works on the server
 
 ## Deployment
 
-Every push to `main` runs CI (typecheck + build) and then deploys over SSH via GitHub Actions (`.github/workflows/deploy.yml`). The server runs `scripts/deploy.sh`, which pulls `main`, installs, builds and restarts the `win16` systemd user service (`deploy/win16.service`).
+Every push to `main` runs CI (typecheck + build) and then deploys via GitHub Actions (`.github/workflows/deploy.yml`): the client is built on GitHub and streamed over SSH to `scripts/deploy.sh`, which checks out that exact commit, installs the runtime dependencies, swaps in the new build and restarts the `win16` systemd user service (`deploy/win16.service`). Running `scripts/deploy.sh` by hand on the server deploys `origin/main` and builds there.
 
 Connection details are repository secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`. On the server the deploy key is pinned in `authorized_keys` to the deploy command only:
 

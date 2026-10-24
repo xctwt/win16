@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# Deploys the latest origin/main on the server. CI runs this over SSH; it can also be run by hand.
+# Deploys win16 on the server.
+#
+#   CI:   ssh <server> "deploy <commit-sha>" < client-build.tar.gz
+#         (the deploy key's forced command runs this script; the built client arrives on stdin)
+#   Hand: ./scripts/deploy.sh   (deploys origin/main and builds the client on the server)
+#
 # Everything lives in main() so bash has parsed the whole file before `git reset` rewrites it.
 set -euo pipefail
 
@@ -11,17 +16,36 @@ main() {
   exec 9>/tmp/win16-deploy.lock
   flock 9
 
+  local sha=""
+  if [[ "${SSH_ORIGINAL_COMMAND:-}" =~ ^deploy\ ([0-9a-f]{40})$ ]]; then
+    sha="${BASH_REMATCH[1]}"
+  fi
+
   echo "==> Updating source"
   git fetch --quiet origin main
-  git reset --hard --quiet origin/main
+  if [ -n "$sha" ]; then
+    git merge-base --is-ancestor "$sha" origin/main || { echo "    $sha is not on main" >&2; return 1; }
+    git reset --hard --quiet "$sha"
+  else
+    git reset --hard --quiet origin/main
+  fi
   echo "    $(git log -1 --format='%h %s')"
 
-  echo "==> Installing dependencies"
-  bun install --frozen-lockfile --silent
-
-  echo "==> Building client"
   rm -rf dist/public-next
-  bunx vite build --logLevel warn --outDir "$PWD/dist/public-next"
+  mkdir -p dist/public-next
+  if [ -n "$sha" ]; then
+    echo "==> Installing runtime dependencies"
+    bun install --frozen-lockfile --production --silent
+    echo "==> Unpacking client build from CI"
+    tar -xzf - -C dist/public-next
+  else
+    echo "==> Installing dependencies"
+    bun install --frozen-lockfile --silent
+    echo "==> Building client"
+    bunx vite build --logLevel warn --outDir "$PWD/dist/public-next"
+  fi
+  [ -f dist/public-next/index.html ] || { echo "    Client build is missing index.html" >&2; return 1; }
+
   # Keep the previous build's chunks so open tabs can still lazy-load windows; prune old ones.
   if [ -d dist/public/assets ]; then
     cp -rnp dist/public/assets/. dist/public-next/assets/

@@ -34,8 +34,16 @@ jobs:
       group: deploy-production
       cancel-in-progress: false
     steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
       # Host, user, key and host key live in repository secrets, never in the repo.
-      # The key is restricted server-side to running scripts/deploy.sh.
+      # The key is restricted server-side to running scripts/deploy.sh, which deploys
+      # exactly this commit and takes the built client from stdin.
       - name: Deploy over SSH
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -47,4 +55,5 @@ jobs:
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o LogLevel=ERROR "$DEPLOY_USER@$DEPLOY_HOST" deploy
+          tar -C dist/public -czf - . |
+            ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o LogLevel=ERROR "$DEPLOY_USER@$DEPLOY_HOST" "deploy $GITHUB_SHA"
