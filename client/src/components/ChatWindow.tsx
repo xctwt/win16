@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from "react";
 import { Window } from "./Windows";
-import { Message } from "@shared/schema";
+import type { Message } from "@shared/types";
 import { useWebSocketChat } from "@/hooks/use-websocket-chat";
 
 function generateRandomNumber() {
@@ -33,7 +33,7 @@ export const ChatWindow = memo(function ChatWindow() {
       id: Date.now(),
       nickname: "System",
       content,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
     };
     setLocalMessages((prev) => [...prev, localMessage]);
   };

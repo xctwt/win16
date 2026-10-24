@@ -1,78 +1,33 @@
-import MillionCompiler from "@million/lint";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
-import path, { dirname } from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-import { fileURLToPath } from "url";
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const r = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
+// In dev, Vite serves the client and proxies everything dynamic to the Bun server.
+const API_TARGET = `http://127.0.0.1:${process.env.PORT ?? 5000}`;
 
 export default defineConfig({
-  plugins: [
-    // Only enable Million in development for faster builds
-    process.env.NODE_ENV === 'development' ? MillionCompiler.vite() : null,
-    react({
-      // Optimize React for production
-      jsxRuntime: 'automatic',
-    }),
-    process.env.NODE_ENV === 'development' ? runtimeErrorOverlay() : null,
-    themePlugin()
-  ].filter(Boolean),
-  
+  root: r("./client"),
+  plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "client", "src"),
-      "@shared": path.resolve(__dirname, "shared"),
+      "@": r("./client/src"),
+      "@shared": r("./shared"),
     },
   },
-  
-  root: path.resolve(__dirname, "client"),
-  
   build: {
-    outDir: path.resolve(__dirname, "dist/public"),
+    outDir: r("./dist/public"),
     emptyOutDir: true,
-    
-    // Aggressive optimization for maximum speed
-    minify: 'esbuild', // Faster than terser
-    cssMinify: true,
-    
-    rollupOptions: {
-      output: {
-        // Manual chunking for optimal loading
-        manualChunks: {
-          // Vendor chunk for better caching
-          vendor: ['react', 'react-dom'],
-          // UI components chunk
-          ui: ['lucide-react', 'framer-motion'],
-        },
-      },
-    },
-    
-    // Optimize chunk size
-    chunkSizeWarningLimit: 1000,
-    
-    // Enable source maps only in development
-    sourcemap: process.env.NODE_ENV === 'development',
-    
-    // Optimize for modern browsers
-    target: 'esnext',
-    
-    // Compression and optimization
-    reportCompressedSize: false, // Faster builds
+    target: "es2022",
+    reportCompressedSize: false,
   },
-  
-  // Optimize dev server
   server: {
-    hmr: {
-      overlay: false, // Faster HMR
+    proxy: {
+      "/api": API_TARGET,
+      "/uploads": API_TARGET,
+      "/ws": { target: API_TARGET, ws: true },
     },
-  },
-  
-  // Build performance optimizations
-  optimizeDeps: {
-    include: ['react', 'react-dom'],
-    exclude: ['@million/lint'], // Exclude from pre-bundling in prod
   },
 });

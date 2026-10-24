@@ -8,7 +8,6 @@ import { OnekoProvider } from '@/lib/onekoContext';
 import { ScreensaverProvider } from '@/lib/screensaverContext';
 import Home from "@/pages/Home";
 import NotFound from "@/pages/not-found";
-import "@/lib/cs16.css";
 
 function Router() {
   return (

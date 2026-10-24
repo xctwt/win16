@@ -305,7 +305,7 @@ export const Paint = memo(function Paint() {
 
       <Window title="paint" windowId="paint" defaultPosition={defaultPosition}>
         <div className="space-y-4">
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2">
             <button
               className={`cs-button ${tool === "brush" ? "border-cs-text" : ""}`}
               onClick={() => setTool("brush")}
@@ -342,7 +342,7 @@ export const Paint = memo(function Paint() {
               ref={canvasRef}
               width={CANVAS_SIZE}
               height={CANVAS_SIZE}
-              className="border border-cs-border cursor-crosshair touch-none flex-shrink-0"
+              className="border border-cs-border cursor-crosshair touch-none shrink-0"
               style={{ width: `${CANVAS_SIZE}px`, height: `${CANVAS_SIZE}px` }}
               onMouseDown={startDrawing}
               onMouseUp={stopDrawing}
@@ -353,7 +353,7 @@ export const Paint = memo(function Paint() {
               onTouchMove={draw}
             />
 
-            <div className="flex-shrink-0 pt-1 space-y-3">
+            <div className="shrink-0 pt-1 space-y-3">
               {memoizedHexColorPicker}
               <div>
                 <div className="text-xs mb-1 text-cs-text-secondary">

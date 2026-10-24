@@ -1,67 +1,51 @@
-import { useEffect, useState, useCallback, memo } from 'react';
-import { MusicPlayer } from '@/components/MusicPlayer';
-import { InfoWindow } from '@/components/InfoWindow';
-import { ChatWindow } from '@/components/ChatWindow';
-import { Paint } from '@/components/Paint';
-import { DrawingsViewer } from '@/components/DrawingsViewer';
-import { Clicker } from '@/components/Clicker';
+import { useEffect, useState, useCallback, useRef, memo, lazy, Suspense } from 'react';
 import { Desktop } from '@/components/Desktop';
-import { useWindowState, WindowId } from '@/lib/windowContext';
+import { useWindowState } from '@/lib/windowContext';
 import { Screensaver } from '@/components/Screensaver';
-import { Settings } from '@/components/Settings';
-import { Contact } from '@/components/Contact';
 import { useScreensaver } from '@/lib/screensaverContext';
-import { Account } from '@/components/Account';
-import { ToastProvider, ToastViewport } from '@/components/ui/use-toast';
+
+// Windows are loaded on first open to keep the initial bundle small.
+const MusicPlayer = lazy(() => import('@/components/MusicPlayer').then((m) => ({ default: m.MusicPlayer })));
+const InfoWindow = lazy(() => import('@/components/InfoWindow').then((m) => ({ default: m.InfoWindow })));
+const ChatWindow = lazy(() => import('@/components/ChatWindow').then((m) => ({ default: m.ChatWindow })));
+const Paint = lazy(() => import('@/components/Paint').then((m) => ({ default: m.Paint })));
+const DrawingsViewer = lazy(() => import('@/components/DrawingsViewer').then((m) => ({ default: m.DrawingsViewer })));
+const Clicker = lazy(() => import('@/components/Clicker').then((m) => ({ default: m.Clicker })));
+const Settings = lazy(() => import('@/components/Settings').then((m) => ({ default: m.Settings })));
+const Contact = lazy(() => import('@/components/Contact').then((m) => ({ default: m.Contact })));
 
 const Windows = memo(function Windows() {
   const { windowStates } = useWindowState();
 
-  // Ensure we have valid window states
-  const safeWindowStates = {
-    music: windowStates?.music ?? { isOpen: false, zIndex: 0 },
-    info: windowStates?.info ?? { isOpen: false, zIndex: 0 },
-    chat: windowStates?.chat ?? { isOpen: false, zIndex: 0 },
-    paint: windowStates?.paint ?? { isOpen: false, zIndex: 0 },
-    drawings: windowStates?.drawings ?? { isOpen: false, zIndex: 0 },
-    clicker: windowStates?.clicker ?? { isOpen: false, zIndex: 0 },
-    settings: windowStates?.settings ?? { isOpen: false, zIndex: 0 },
-    contact: windowStates?.contact ?? { isOpen: false, zIndex: 0 },
-    account: windowStates?.account ?? { isOpen: false, zIndex: 0 },
-  };
-
   return (
     <>
-      {safeWindowStates.music.isOpen && <MusicPlayer />}
-      {safeWindowStates.info.isOpen && <InfoWindow />}
-      {safeWindowStates.chat.isOpen && <ChatWindow />}
-      {safeWindowStates.paint.isOpen && <Paint />}
-      {safeWindowStates.drawings.isOpen && <DrawingsViewer />}
-      {safeWindowStates.clicker.isOpen && <Clicker />}
-      {safeWindowStates.settings.isOpen && <Settings />}
-      {safeWindowStates.contact.isOpen && <Contact />}
-      {safeWindowStates.account.isOpen && <Account />}
+      {windowStates.music.isOpen && <Suspense fallback={null}><MusicPlayer /></Suspense>}
+      {windowStates.info.isOpen && <Suspense fallback={null}><InfoWindow /></Suspense>}
+      {windowStates.chat.isOpen && <Suspense fallback={null}><ChatWindow /></Suspense>}
+      {windowStates.paint.isOpen && <Suspense fallback={null}><Paint /></Suspense>}
+      {windowStates.drawings.isOpen && <Suspense fallback={null}><DrawingsViewer /></Suspense>}
+      {windowStates.clicker.isOpen && <Suspense fallback={null}><Clicker /></Suspense>}
+      {windowStates.settings.isOpen && <Suspense fallback={null}><Settings /></Suspense>}
+      {windowStates.contact.isOpen && <Suspense fallback={null}><Contact /></Suspense>}
     </>
   );
 });
 
+const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'dblclick', 'touchstart'] as const;
+
 export default function Home() {
   const [isScreensaverActive, setIsScreensaverActive] = useState(false);
   const { timeout } = useScreensaver();
-  let idleTimer: NodeJS.Timeout;
+  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Reset timer on user activity
   const resetTimer = useCallback(() => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      setIsScreensaverActive(true);
-    }, timeout * 1000);
+    clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setIsScreensaverActive(true), timeout * 1000);
   }, [timeout]);
 
-  // Handle user activity
   const handleActivity = useCallback((e: Event) => {
     if (isScreensaverActive) {
-      // Only deactivate screensaver on double click or keyboard press
+      // Only a double click or key press dismisses the screensaver
       if (e.type === 'dblclick' || e.type === 'keydown') {
         setIsScreensaverActive(false);
         resetTimer();
@@ -72,37 +56,19 @@ export default function Home() {
   }, [isScreensaverActive, resetTimer]);
 
   useEffect(() => {
-    // Add event listeners for user activity
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('mousedown', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('dblclick', handleActivity);
-    window.addEventListener('touchstart', handleActivity);
-
-    // Start initial timer
+    ACTIVITY_EVENTS.forEach((type) => window.addEventListener(type, handleActivity, { passive: true }));
     resetTimer();
-
-    // Cleanup
     return () => {
-      if (idleTimer) clearTimeout(idleTimer);
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('mousedown', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('dblclick', handleActivity);
-      window.removeEventListener('touchstart', handleActivity);
+      clearTimeout(idleTimer.current);
+      ACTIVITY_EVENTS.forEach((type) => window.removeEventListener(type, handleActivity));
     };
   }, [handleActivity, resetTimer]);
 
   return (
-      <ToastProvider>
-        <div className="h-screen w-screen overflow-hidden">
-          <Desktop />
-          <Windows />
-          {isScreensaverActive && (
-            <Screensaver onActivity={handleActivity} />
-          )}
-        </div>
-        <ToastViewport />
-      </ToastProvider>
+    <div className="h-screen w-screen overflow-hidden">
+      <Desktop />
+      <Windows />
+      {isScreensaverActive && <Screensaver onActivity={handleActivity} />}
+    </div>
   );
 }

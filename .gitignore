@@ -1,13 +1,8 @@
 node_modules
 dist
 .DS_Store
-server/public
-vite.config.ts.*
 *.tar.gz
+*.tmp
+.env
 uploads
 data
-bun.lockb
-.env
-.million/store.json
-.million
-bun.lockb

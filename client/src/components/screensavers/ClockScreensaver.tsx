@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useTheme } from "@/lib/themeContext";
 import { useScreensaver } from "@/lib/screensaverContext";
 import { MouseEvent, TouchEvent } from "react";
 
@@ -9,7 +8,6 @@ export function ClockScreensaver({
   onActivity: (e: Event) => void;
 }) {
   const [time, setTime] = useState(new Date());
-  const { theme } = useTheme();
   const { clockPosition } = useScreensaver();
 
   // Update time every second

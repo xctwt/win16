@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Window } from './Windows';
-import { Drawing, type PowPayload } from '@shared/schema';
+import type { Drawing, PowChallenge, PowPayload } from '@shared/types';
 import { RefreshCw, ThumbsUp, ThumbsDown, ArrowUpDown } from 'lucide-react';
 
 // Generate a unique client ID for this browser session
@@ -13,20 +13,13 @@ const generateClientId = () => {
   return newClientId;
 };
 
-interface PowChallengeResponse {
-  challengeId: string;
-  prefix: string;
-  difficulty: number; // leading zero hex chars required
-  expiresAt: number;
-}
-
-async function fetchPowChallenge(): Promise<PowChallengeResponse> {
+async function fetchPowChallenge(): Promise<PowChallenge> {
   const res = await fetch('/api/vote/pow-challenge');
   if (!res.ok) throw new Error('Failed to get challenge');
   return res.json();
 }
 
-async function solvePow(challenge: PowChallengeResponse, clientId: string, abortSignal: AbortSignal): Promise<PowPayload> {
+async function solvePow(challenge: PowChallenge, clientId: string, abortSignal: AbortSignal): Promise<PowPayload> {
   // We try nonces until we find a hash with required leading zeros
   const encoder = new TextEncoder();
   const targetPrefix = '0'.repeat(challenge.difficulty);
@@ -60,7 +53,7 @@ export function DrawingsViewer() {
     } catch { return {}; }
   });
   const miningControllerRef = useRef<AbortController | null>(null);
-  const clientId = generateClientId();
+  const [clientId] = useState(generateClientId);
 
   // Fetch drawings with sorting
   const { data: drawings = [], isLoading } = useQuery<Drawing[]>({
@@ -99,17 +92,17 @@ export function DrawingsViewer() {
       }
       return response.json();
     },
-    onSuccess: (updated: Drawing) => {
-      // Record vote locally (cannot change later)
-      setUserVotes(prev => {
-        if (prev[updated.id]) return prev; // already recorded
-        const voteType = updated.upvotes + updated.downvotes > (updated.score >=0 ? updated.upvotes - updated.downvotes : 0) ? undefined : undefined; // placeholder
-        return prev; // placeholder, real set below in handleVote via param
-      });
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/drawings'] });
     },
-    onError: (e: any) => {
+    onError: (e: Error, { drawingId }) => {
       setError(e.message || 'Error');
+      // The vote didn't go through, so let the user try again.
+      setUserVotes(prev => {
+        const { [drawingId]: _, ...next } = prev;
+        localStorage.setItem('drawingVotes', JSON.stringify(next));
+        return next;
+      });
     },
     onSettled: () => {
       setIsMining(false);
@@ -156,6 +149,8 @@ export function DrawingsViewer() {
           </button>
         </div>
 
+        {error && !isMining && <div className="text-xs text-red-500 px-2">{error}</div>}
+
         {isMining && (
           <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
             <div className="bg-cs-background border border-cs-border p-4 rounded-sm max-w-xs w-full space-y-3">
@@ -177,7 +172,7 @@ export function DrawingsViewer() {
                 <div className="font-bold">{drawing.name}</div>
                 <div>by {drawing.author}</div>
                 <div>{new Date(drawing.timestamp).toLocaleString()}</div>
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center">
                   <div className="text-xs font-bold">Score: {drawing.score}</div>
                   <div className="flex gap-1">
                     <button className="cs-button p-1" onClick={() => handleVote(drawing.id, 'up')} disabled={voteMutation.isPending || isMining || !!userVotes[drawing.id]} title="Upvote">
