@@ -2,47 +2,40 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { BunRequest } from "bun";
 import type { Drawing, PowChallenge, PowPayload } from "@shared/types";
-import { DATA_DIR, UPLOADS_DIR } from "../config";
-import { JsonStore } from "../lib/json-store";
+import { UPLOADS_DIR } from "../config";
+import { db, meta } from "../lib/db";
 import { clientIp, fail, json, parseJson, sha256, type AppServer } from "../lib/http";
 import { RateLimiter } from "../lib/rate-limit";
-
-interface DrawingsMeta {
-  drawings: Drawing[];
-  /** Next id to assign (the field name is kept for compatibility with existing data). */
-  lastDrawingId: number;
-}
-
-interface VoteRecord {
-  drawingId: number;
-  ipAddress: string;
-  clientId: string;
-  timestamp: string;
-  voteType: "up" | "down";
-}
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const POW_DIFFICULTY = 4; // leading zero hex chars
 const POW_TTL_MS = 5 * 60_000;
 
-const meta = await JsonStore.open<DrawingsMeta>(join(UPLOADS_DIR, "metadata.json"), (raw) => {
-  const data = raw as Partial<DrawingsMeta> | undefined;
-  const drawings = (Array.isArray(data?.drawings) ? data.drawings : [])
-    .filter((d) => typeof d?.imageData === "string" && d.imageData.split("/").pop()!.startsWith("drawing-"))
-    .map((d) => ({ ...d, score: d.score || 0, upvotes: d.upvotes || 0, downvotes: d.downvotes || 0 }));
-  const maxId = drawings.reduce((m, d) => Math.max(m, d.id), 0);
-  return { drawings, lastDrawingId: Math.max(Number(data?.lastDrawingId) || 1, maxId + 1) };
-});
+const DRAWING_COLUMNS = `id, name, author, image_data AS imageData, timestamp,
+  upvotes - downvotes AS score, upvotes, downvotes`;
+const listByDate = db.query<Drawing, []>(`SELECT ${DRAWING_COLUMNS} FROM drawings ORDER BY timestamp, id`);
+const listByScore = db.query<Drawing, []>(`SELECT ${DRAWING_COLUMNS} FROM drawings ORDER BY score DESC, id`);
+const getDrawing = db.query<Drawing, [number]>(`SELECT ${DRAWING_COLUMNS} FROM drawings WHERE id = ?`);
+const insertDrawing = db.query(`
+  INSERT INTO drawings (id, name, author, image_data, timestamp) VALUES ($id, $name, $author, $imageData, $timestamp)
+`);
+const hasVoted = db.query<{ found: number }, [number, string, number, string]>(`
+  SELECT 1 AS found WHERE EXISTS (SELECT 1 FROM votes WHERE drawing_id = ? AND ip = ?)
+    OR EXISTS (SELECT 1 FROM votes WHERE drawing_id = ? AND client_id = ?)
+`);
+const insertVote = db.query(`
+  INSERT INTO votes (drawing_id, ip, client_id, vote_type, timestamp) VALUES ($drawingId, $ip, $clientId, $voteType, $timestamp)
+`);
+const countVote = {
+  up: db.query<void, [number]>("UPDATE drawings SET upvotes = upvotes + 1 WHERE id = ?"),
+  down: db.query<void, [number]>("UPDATE drawings SET downvotes = downvotes + 1 WHERE id = ?"),
+};
 
-const votes = await JsonStore.open<VoteRecord[]>(join(DATA_DIR, "vote-records.json"), (raw) =>
-  Array.isArray(raw) ? raw : [],
-);
-
-// One vote per drawing per IP and per client id.
-const voted = new Set<string>();
-for (const v of votes.data) {
-  voted.add(`${v.drawingId}:ip:${v.ipAddress}`);
-  voted.add(`${v.drawingId}:client:${v.clientId}`);
+/** Ids are never reused, so a new drawing can't overwrite an old file. */
+function takeDrawingId(): number {
+  const id = Number(meta.get("next_drawing_id") ?? 1);
+  meta.set("next_drawing_id", id + 1);
+  return id;
 }
 
 const challenges = new Map<string, PowChallenge & { ip: string }>();
@@ -96,10 +89,7 @@ export const drawingRoutes = {
   "/api/drawings": {
     GET: (req: BunRequest) => {
       const sortBy = new URL(req.url).searchParams.get("sortBy");
-      const list = [...meta.data.drawings];
-      if (sortBy === "score") list.sort((a, b) => b.score - a.score);
-      else list.sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
-      return json(list);
+      return json(sortBy === "score" ? listByScore.all() : listByDate.all());
     },
 
     POST: async (req: BunRequest) => {
@@ -111,23 +101,18 @@ export const drawingRoutes = {
       const bytes = Buffer.from(base64, "base64");
       if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return fail(400, "Invalid image size");
 
-      const id = meta.data.lastDrawingId++;
+      const id = takeDrawingId();
       const fileName = `drawing-${id}.${ext}`;
       await Bun.write(join(UPLOADS_DIR, fileName), bytes);
 
-      const drawing: Drawing = {
+      insertDrawing.run({
         id,
         name: body.name,
         author: body.author || "Anonymous",
         imageData: `/uploads/${fileName}`,
         timestamp: new Date().toISOString(),
-        score: 0,
-        upvotes: 0,
-        downvotes: 0,
-      };
-      meta.data.drawings.push(drawing);
-      meta.save();
-      return json(drawing);
+      });
+      return json(getDrawing.get(id));
     },
   },
 
@@ -149,26 +134,18 @@ export const drawingRoutes = {
       if (!verifyPow(challenge, pow, clientId)) return fail(400, "Invalid PoW");
       challenges.delete(challenge.challengeId);
 
-      const drawing = meta.data.drawings.find((d) => d.id === drawingId);
-      if (!drawing) return fail(404, "Drawing not found");
+      if (!getDrawing.get(drawingId)) return fail(404, "Drawing not found");
 
-      // Votes are final; repeat votes just return the current state.
-      if (voted.has(`${drawingId}:ip:${ip}`) || voted.has(`${drawingId}:client:${clientId}`)) {
-        return json(drawing);
+      // One vote per drawing per IP and per client id. Votes are final; repeat
+      // votes just return the current state.
+      if (!hasVoted.get(drawingId, ip, drawingId, clientId)) {
+        db.transaction(() => {
+          insertVote.run({ drawingId, ip, clientId, voteType, timestamp: new Date().toISOString() });
+          countVote[voteType].run(drawingId);
+        })();
+        voteLimiter.record(ip);
       }
-
-      voted.add(`${drawingId}:ip:${ip}`);
-      voted.add(`${drawingId}:client:${clientId}`);
-      votes.data.push({ drawingId, ipAddress: ip, clientId, timestamp: new Date().toISOString(), voteType });
-      votes.save();
-
-      if (voteType === "up") drawing.upvotes++;
-      else drawing.downvotes++;
-      drawing.score = drawing.upvotes - drawing.downvotes;
-      meta.save();
-
-      voteLimiter.record(ip);
-      return json(drawing);
+      return json(getDrawing.get(drawingId));
     },
   },
 };

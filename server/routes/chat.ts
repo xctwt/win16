@@ -1,35 +1,25 @@
-import { join } from "node:path";
 import { z } from "zod";
 import type { BunRequest, ServerWebSocket, WebSocketHandler } from "bun";
 import type { ChatServerEvent, Message } from "@shared/types";
-import { DATA_DIR } from "../config";
-import { JsonStore } from "../lib/json-store";
+import { db } from "../lib/db";
 import { fail, json, parseJson, type AppServer } from "../lib/http";
 
 const MAX_MESSAGES = 69;
 const INITIAL_MESSAGES = 50;
 const TOPIC = "chat";
 
-interface MessagesData {
-  messages: Message[];
-  lastUpdated: string;
-}
-
-const store = await JsonStore.open<MessagesData>(
-  join(DATA_DIR, "messages.json"),
-  (raw) => {
-    // Older versions stored a bare array.
-    const messages = Array.isArray(raw)
-      ? raw
-      : Array.isArray((raw as MessagesData | undefined)?.messages)
-        ? (raw as MessagesData).messages
-        : [];
-    return { messages: messages.slice(-MAX_MESSAGES), lastUpdated: new Date().toISOString() };
-  },
-  2000,
+const insertMessage = db.query<Message, [string, string, string]>(
+  "INSERT INTO messages (nickname, content, timestamp) VALUES (?, ?, ?) RETURNING id, nickname, content, timestamp",
+);
+const trimMessages = db.query<void, [number]>(
+  "DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT ?)",
+);
+const countMessages = db.query<{ n: number }, []>("SELECT COUNT(*) AS n FROM messages");
+const latestMessages = db.query<Message, [number]>(
+  "SELECT * FROM (SELECT id, nickname, content, timestamp FROM messages ORDER BY id DESC LIMIT ?) ORDER BY id",
 );
 
-let nextId = store.data.messages.reduce((m, msg) => Math.max(m, msg.id), 0) + 1;
+trimMessages.run(MAX_MESSAGES);
 
 const messageSchema = z.object({
   nickname: z.string().trim().min(1).max(50),
@@ -40,10 +30,8 @@ let server: AppServer;
 
 /** Store a message and push it to every connected client. */
 function postMessage(input: z.infer<typeof messageSchema>): Message {
-  const message: Message = { id: nextId++, ...input, timestamp: new Date().toISOString() };
-  store.data.messages = [...store.data.messages, message].slice(-MAX_MESSAGES);
-  store.data.lastUpdated = message.timestamp;
-  store.save();
+  const message = insertMessage.get(input.nickname, input.content, new Date().toISOString())!;
+  trimMessages.run(MAX_MESSAGES);
   server.publish(TOPIC, JSON.stringify({ type: "new_message", message } satisfies ChatServerEvent));
   return message;
 }
@@ -53,7 +41,7 @@ const send = (ws: ServerWebSocket<undefined>, event: ChatServerEvent) => ws.send
 export const chatSocket: WebSocketHandler<undefined> = {
   open(ws) {
     ws.subscribe(TOPIC);
-    send(ws, { type: "initial_messages", messages: store.data.messages.slice(-INITIAL_MESSAGES) });
+    send(ws, { type: "initial_messages", messages: latestMessages.all(INITIAL_MESSAGES) });
   },
   message(ws, raw) {
     let data: unknown;
@@ -82,12 +70,12 @@ export const chatRoutes = {
     s.upgrade(req) ? undefined : fail(426, "Expected a WebSocket upgrade"),
 
   "/api/messages": {
-    GET: () => json(store.data.messages),
+    GET: () => json(latestMessages.all(MAX_MESSAGES)),
     POST: async (req: BunRequest) => {
       const body = await parseJson(req, messageSchema);
       if (!body) return fail(400, "Invalid message data");
       const message = postMessage(body);
-      return json({ success: true, message, totalMessages: store.data.messages.length });
+      return json({ success: true, message, totalMessages: countMessages.get()!.n });
     },
   },
 };

@@ -60,3 +60,9 @@ export type ChatServerEvent =
   | { type: "error"; message: string };
 
 export type ChatClientEvent = { type: "chat_message"; nickname: string; content: string };
+
+/** A clicker game kept on the server (see shared/clicker.ts). */
+export interface ClickerSession {
+  id: string;
+  state: import("./clicker").ClickerState;
+}
